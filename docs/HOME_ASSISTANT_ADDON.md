@@ -1,58 +1,62 @@
 # Home Assistant Add-on Migration
 
-## ✅ Aktualisierung auf offizielle Home Assistant Add-on Basis
+## ✅ Update to Official Home Assistant Add-on Base
 
-Das Home Assistant Add-on wurde erfolgreich auf die offizielle `hassio-addons/base` Struktur umgestellt, basierend auf den Best Practices von [hassio-addons](https://github.com/hassio-addons).
+The Home Assistant Add-on has been successfully migrated to the official `hassio-addons/base` structure, based on best practices from [hassio-addons](https://github.com/hassio-addons).
 
-### 🔄 Was wurde geändert:
+### 🔄 What was changed:
 
 #### **Dockerfile** (`homeassistant/Dockerfile`)
-- **Basis-Image**: `ghcr.io/hassio-addons/base:18.0.3` statt Node.js Alpine
-- **Build-Argumente**: Vollständige Integration der offiziellen Build-Parameter
-- **Paket-Management**: APK-basierte Installation mit Build-Dependencies
-- **S6-Overlay**: Nutzt das S6-Supervision-System der Basis
-- **Labels**: Vollständige OpenContainers-Labels
 
-#### **Run-Script** (`homeassistant/run.sh`)
-- **S6-Integration**: Kompatibel mit dem S6-Supervision-System
-- **Bashio-Integration**: Verwendet `bashio::config` für Konfiguration
-- **Logging**: Strukturiertes Logging mit `bashio::log.info`
-- **Service-Struktur**: Folgt den offiziellen Add-on Konventionen
+- **Base Image**: `ghcr.io/hassio-addons/base:18.0.3` instead of Node.js Alpine
+- **Build Arguments**: Full integration of official build parameters
+- **Package Management**: APK-based installation with build dependencies
+- **S6-Overlay**: Uses the S6 supervision system of the base
+- **Labels**: Complete OpenContainers labels
 
-#### **Konfiguration** (`homeassistant/config.json`)
-- **Erweiterte Optionen**: Watchdog, AppArmor, Service-Dependencies
-- **Image-Referenz**: GitHub Container Registry Integration
-- **Security**: AppArmor-Profile, keine privilegierten Rechte
-- **Services**: MQTT-Service-Dependency definiert
+#### **Run Script** (`homeassistant/run.sh`)
 
-#### **Build-System** (`homeassistant/build.sh`)
-- **Multi-Architecture**: Automatischer Build für alle unterstützten Architekturen
-- **Manifest-Creation**: Docker-Manifest für Multi-Arch-Support
-- **Build-Argumente**: Vollständige Metadaten-Integration
-- **Registry-Push**: Bereit für GitHub Container Registry
+- **S6-Integration**: Compatible with the S6 supervision system
+- **Bashio Integration**: Uses `bashio::config` for configuration
+- **Logging**: Structured logging with `bashio::log.info`
+- **Service Structure**: Follows official add-on conventions
 
-### 🏗️ Build-Prozess:
+#### **Configuration** (`homeassistant/config.json`)
+
+- **Extended Options**: Watchdog, AppArmor, service dependencies
+- **Image Reference**: GitHub Container Registry integration
+- **Security**: AppArmor profiles, no privileged rights
+- **Services**: MQTT service dependency defined
+
+#### **Build System** (`homeassistant/build.sh`)
+
+- **Multi-Architecture**: Automatic build for all supported architectures
+- **Manifest Creation**: Docker manifest for multi-arch support
+- **Build Arguments**: Complete metadata integration
+- **Registry Push**: Ready for GitHub Container Registry
+
+### 🏗️ Build Process:
 
 ```bash
-# Einzelner Build (für Tests)
+# Single build (for testing)
 npm run homeassistant:build-single
 
-# Multi-Architecture Build (für Production)
+# Multi-architecture build (for production)
 npm run homeassistant:build
 ```
 
-### 📂 Add-on Struktur:
+### 📂 Add-on Structure:
 
 ```
 homeassistant/
 ├── Dockerfile              # Home Assistant Add-on Dockerfile
-├── config.json            # Add-on Konfiguration
-├── README.md              # Add-on Dokumentation
-├── run.sh                 # Service-Start-Script
-└── build.sh               # Multi-Arch Build-Script
+├── config.json            # Add-on configuration
+├── README.md              # Add-on documentation
+├── run.sh                 # Service start script
+└── build.sh               # Multi-arch build script
 ```
 
-### 🔧 Unterstützte Architekturen:
+### 🔧 Supported Architectures:
 
 - **aarch64** - ARM 64-bit (Raspberry Pi 4, etc.)
 - **amd64** - Intel/AMD 64-bit
@@ -62,13 +66,15 @@ homeassistant/
 
 ### 🚀 Deployment:
 
-1. **Registry vorbereiten:**
+1. **Prepare Registry:**
+
    ```bash
    # GitHub Container Registry Login
    echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin
    ```
 
-2. **Build und Push:**
+2. **Build and Push:**
+
    ```bash
    ./homeassistant/build.sh
    docker manifest push ghcr.io/your-username/f1-mqtt-bridge:1.0.0
@@ -76,32 +82,32 @@ homeassistant/
    ```
 
 3. **Home Assistant Integration:**
-   - Repository in Home Assistant hinzufügen
-   - Add-on über die UI installieren
-   - Konfiguration anpassen
-   - Starten und Logs überwachen
+   - Add repository to Home Assistant
+   - Install add-on via UI
+   - Adjust configuration
+   - Start and monitor logs
 
-### 📋 Vorteile der neuen Struktur:
+### 📋 Benefits of the New Structure:
 
-- ✅ **Offizieller Standard**: Folgt den hassio-addons Konventionen
-- ✅ **Multi-Architecture**: Automatischer Support für alle HA-Plattformen
-- ✅ **S6-Supervision**: Robuste Service-Verwaltung
-- ✅ **Bashio-Integration**: Native Home Assistant Konfiguration
-- ✅ **Security**: AppArmor-Profile und Non-Root-Execution
-- ✅ **Monitoring**: Integrierte Health-Checks und Watchdog
-- ✅ **Logging**: Strukturiertes Logging in HA-Logs
+- ✅ **Official Standard**: Follows hassio-addons conventions
+- ✅ **Multi-Architecture**: Automatic support for all HA platforms
+- ✅ **S6-Supervision**: Robust service management
+- ✅ **Bashio Integration**: Native Home Assistant configuration
+- ✅ **Security**: AppArmor profiles and non-root execution
+- ✅ **Monitoring**: Integrated health checks and watchdog
+- ✅ **Logging**: Structured logging in HA logs
 
 ### 🔍 Debugging:
 
 ```bash
-# Add-on Logs anzeigen
+# Show add-on logs
 ha addons logs f1-mqtt-bridge
 
-# Add-on Status prüfen
+# Check add-on status
 ha addons info f1-mqtt-bridge
 
-# Container direkt testen
+# Test container directly
 docker run --rm -it ghcr.io/your-username/f1-mqtt-bridge:latest
 ```
 
-Das Add-on ist jetzt vollständig kompatibel mit den offiziellen Home Assistant Add-on Standards! 🎉
+The add-on is now fully compatible with official Home Assistant Add-on standards! 🎉

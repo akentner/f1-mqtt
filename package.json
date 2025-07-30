@@ -34,7 +34,7 @@
     "racing",
     "bridge"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "Alexander Kentner <akentner@github.com>",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {

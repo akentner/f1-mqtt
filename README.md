@@ -1,144 +1,144 @@
 # F1 MQTT Bridge
 
-Ein TypeScript-basierter Server, der F1-Timing-Daten von SignalR empfängt, verarbeitet und an einen MQTT-Broker weiterleitet. Speziell entwickelt für die Integration mit Home Assistant.
+A TypeScript-based server that receives, processes, and forwards F1 timing data from SignalR to an MQTT broker. Specifically designed for integration with Home Assistant.
 
 ## 🏎️ Features
 
-- **SignalR Client**: Verbindung zu F1 Live-Timing-Daten
-- **MQTT Publisher**: Veröffentlichung der Events auf MQTT
-- **Event Processing**: Intelligente Batch-Verarbeitung und Daten-Transformation
-- **Home Assistant Integration**: Automatische Discovery-Konfiguration
-- **Health Monitoring**: REST-API für Status und Metriken
-- **Docker Support**: Vollständig containerisiert
+- **SignalR Client**: Connection to F1 Live Timing data
+- **MQTT Publisher**: Publishing events to MQTT
+- **Event Processing**: Intelligent batch processing and data transformation
+- **Home Assistant Integration**: Automatic discovery configuration
+- **Health Monitoring**: REST API for status and metrics
+- **Docker Support**: Fully containerized
 - **DevContainer**: VS Code Development Container
-- **Home Assistant Addon**: Bereit für HA-Addon-Deployment
+- **Home Assistant Addon**: Ready for HA addon deployment
 
-## 🛠️ Technologie-Stack
+## 🛠️ Technology Stack
 
-- **TypeScript** - Typsichere Entwicklung
-- **SignalR Client** - Echtzeit-Datenverbindung
-- **MQTT.js** - MQTT-Client-Bibliothek
-- **Express.js** - Web-Server für Health-Checks
-- **Jest** - Testing Framework
-- **ESLint + Prettier** - Code-Qualität und Formatierung
-- **Docker** - Containerisierung
+- **TypeScript** - Type-safe development
+- **SignalR Client** - Real-time data connection
+- **MQTT.js** - MQTT client library
+- **Express.js** - Web server for health checks
+- **Jest** - Testing framework
+- **ESLint + Prettier** - Code quality and formatting
+- **Docker** - Containerization
 
-## 🚀 Schnellstart
+## 🚀 Quick Start
 
-### Mit DevContainer (Empfohlen)
+### With DevContainer (Recommended)
 
-1. Öffnen Sie das Projekt in VS Code
-2. Klicken Sie auf "Reopen in Container" wenn die Benachrichtigung erscheint
-3. Der DevContainer wird automatisch eingerichtet
+1. Open the project in VS Code
+2. Click "Reopen in Container" when the notification appears
+3. The DevContainer will be set up automatically
 
-### Lokale Entwicklung
+### Local Development
 
 ```bash
-# Dependencies installieren
+# Install dependencies
 npm install
 
-# Umgebungsvariablen konfigurieren
+# Configure environment variables
 cp .env.example .env
-# Bearbeiten Sie .env mit Ihren Einstellungen
+# Edit .env with your settings
 
-# Projekt bauen
+# Build project
 npm run build
 
-# Entwicklungsserver starten
+# Start development server
 npm run dev
 
-# Mit Watch-Modus
+# With watch mode
 npm run dev:watch
 ```
 
-### Mit Docker Compose
+### With Docker Compose
 
 ```bash
-# Services starten (inklusive MQTT Broker)
+# Start services (including MQTT broker)
 npm run docker:run
 
-# Logs verfolgen
+# Follow logs
 npm run docker:logs
 
-# Services stoppen
+# Stop services
 npm run docker:stop
 ```
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-### Umgebungsvariablen
+### Environment Variables
 
-| Variable | Beschreibung | Standard |
-|----------|-------------|----------|
-| `SIGNALR_HUB_URL` | SignalR Hub URL | `https://livetiming.formula1.com/signalr` |
-| `SIGNALR_HUB_NAME` | SignalR Hub Name | `f1TimingHub` |
-| `SIGNALR_ACCESS_TOKEN` | Optionales Access Token | - |
-| `MQTT_BROKER_URL` | MQTT Broker URL | `mqtt://localhost:1883` |
-| `MQTT_USERNAME` | MQTT Benutzername | - |
-| `MQTT_PASSWORD` | MQTT Passwort | - |
-| `MQTT_CLIENT_ID` | MQTT Client ID | `f1-mqtt-bridge` |
-| `MQTT_TOPIC_PREFIX` | MQTT Topic Prefix | `f1` |
-| `MQTT_QOS` | MQTT QoS Level (0-2) | `1` |
-| `MQTT_RETAIN` | MQTT Retain Flag | `false` |
-| `LOG_LEVEL` | Log Level | `info` |
-| `PORT` | HTTP Server Port | `3000` |
-| `HA_DISCOVERY_PREFIX` | HA Discovery Prefix | `homeassistant` |
-| `HA_NODE_ID` | HA Node ID | `f1_telemetry` |
+| Variable               | Description           | Default                                   |
+| ---------------------- | --------------------- | ----------------------------------------- |
+| `SIGNALR_HUB_URL`      | SignalR Hub URL       | `https://livetiming.formula1.com/signalr` |
+| `SIGNALR_HUB_NAME`     | SignalR Hub Name      | `f1TimingHub`                             |
+| `SIGNALR_ACCESS_TOKEN` | Optional Access Token | -                                         |
+| `MQTT_BROKER_URL`      | MQTT Broker URL       | `mqtt://localhost:1883`                   |
+| `MQTT_USERNAME`        | MQTT Username         | -                                         |
+| `MQTT_PASSWORD`        | MQTT Password         | -                                         |
+| `MQTT_CLIENT_ID`       | MQTT Client ID        | `f1-mqtt-bridge`                          |
+| `MQTT_TOPIC_PREFIX`    | MQTT Topic Prefix     | `f1`                                      |
+| `MQTT_QOS`             | MQTT QoS Level (0-2)  | `1`                                       |
+| `MQTT_RETAIN`          | MQTT Retain Flag      | `false`                                   |
+| `LOG_LEVEL`            | Log Level             | `info`                                    |
+| `PORT`                 | HTTP Server Port      | `3000`                                    |
+| `HA_DISCOVERY_PREFIX`  | HA Discovery Prefix   | `homeassistant`                           |
+| `HA_NODE_ID`           | HA Node ID            | `f1_telemetry`                            |
 
-## 📁 Projektstruktur
+## 📁 Project Structure
 
 ```
 f1-mqtt/
-├── src/                    # TypeScript Quellcode
-│   ├── config/            # Konfiguration
+├── src/                    # TypeScript source code
+│   ├── config/            # Configuration
 │   ├── services/          # Core Services
 │   │   ├── signalr-client.ts
 │   │   ├── mqtt-publisher.ts
 │   │   ├── event-processor.ts
 │   │   └── health-server.ts
-│   ├── types/             # TypeScript Definitionen
-│   ├── utils/             # Hilfsfunktionen
+│   ├── types/             # TypeScript definitions
+│   ├── utils/             # Utility functions
 │   ├── __tests__/         # Unit Tests
-│   └── index.ts           # Hauptanwendung
+│   └── index.ts           # Main application
 ├── .devcontainer/         # VS Code DevContainer
 ├── homeassistant/         # Home Assistant Addon
-├── docker/                # Docker Konfigurationen
-├── dist/                  # Kompilierte JavaScript-Dateien
-└── docs/                  # Dokumentation (zukünftig)
+├── docker/                # Docker configurations
+├── dist/                  # Compiled JavaScript files
+└── docs/                  # Documentation (future)
 ```
 
 ## 🧪 Testing
 
 ```bash
-# Tests ausführen
+# Run tests
 npm test
 
-# Tests mit Watch-Modus
+# Tests with watch mode
 npm run test:watch
 
-# Coverage Report
+# Coverage report
 npm run test:coverage
 ```
 
 ## 🔧 Development
 
-### Code-Qualität
+### Code Quality
 
 ```bash
 # Linting
 npm run lint
 npm run lint:fix
 
-# Formatierung
+# Formatting
 npm run format
 npm run format:check
 ```
 
 ### VS Code Extensions
 
-Die folgenden Extensions werden automatisch im DevContainer installiert:
+The following extensions are automatically installed in the DevContainer:
 
-- TypeScript und JavaScript Language Features
+- TypeScript and JavaScript Language Features
 - ESLint
 - Prettier
 - Docker
@@ -146,43 +146,44 @@ Die folgenden Extensions werden automatisch im DevContainer installiert:
 
 ## 🏠 Home Assistant Integration
 
-### Als Addon installieren
+### Install as Addon
 
-1. Projekt für HA Addon bauen:
+1. Build project for HA addon:
+
    ```bash
    npm run homeassistant:build
    ```
 
-2. Addon-Verzeichnis in Home Assistant kopieren
+2. Copy addon directory to Home Assistant
 
-3. Addon über die HA-Oberfläche installieren und konfigurieren
+3. Install and configure addon via HA interface
 
 ### MQTT Topics
 
-Die Anwendung publiziert Events unter folgenden Topics:
+The application publishes events under the following topics:
 
-- `f1/timing` - Timing-Daten
-- `f1/car_data` - Auto-Telemetrie
-- `f1/session_info` - Session-Informationen
-- `f1/status` - Bridge-Status (online/offline)
+- `f1/timing` - Timing data
+- `f1/car_data` - Car telemetry
+- `f1/session_info` - Session information
+- `f1/status` - Bridge status (online/offline)
 
 ### Home Assistant Entities
 
-Automatisch erstellte Entities:
+Automatically created entities:
 
-- `sensor.f1_session_data` - Hauptsensor mit Session-Daten
-- `binary_sensor.f1_bridge_status` - Bridge-Verbindungsstatus
+- `sensor.f1_session_data` - Main sensor with session data
+- `binary_sensor.f1_bridge_status` - Bridge connection status
 
 ## 📊 Monitoring
 
 ### Health Check Endpoints
 
-- `GET /health` - Einfacher Health Check
-- `GET /status` - Detaillierte Status-Informationen
-- `GET /metrics` - Prometheus-kompatible Metriken
-- `GET /` - API-Übersicht
+- `GET /health` - Simple health check
+- `GET /status` - Detailed status information
+- `GET /metrics` - Prometheus-compatible metrics
+- `GET /` - API overview
 
-### Beispiel Health Check Response
+### Example Health Check Response
 
 ```json
 {
@@ -211,10 +212,10 @@ Automatisch erstellte Entities:
 ### Standalone Container
 
 ```bash
-# Image bauen
+# Build image
 docker build -t f1-mqtt-bridge .
 
-# Container starten
+# Start container
 docker run -d \
   --name f1-mqtt-bridge \
   -p 3000:3000 \
@@ -222,61 +223,62 @@ docker run -d \
   f1-mqtt-bridge
 ```
 
-### Mit Docker Compose
+### With Docker Compose
 
-Das bereitgestellte `docker-compose.yml` startet:
+The provided `docker-compose.yml` starts:
+
 - F1 MQTT Bridge
 - Mosquitto MQTT Broker
-- MQTT Explorer (für Debugging)
+- MQTT Explorer (for debugging)
 
-## 🔒 Sicherheit
+## 🔒 Security
 
-- Läuft als Non-Root-User
-- Umgebungsvariablen für sensible Daten
-- Health-Check-Integration
-- Graceful Shutdown-Handling
+- Runs as non-root user
+- Environment variables for sensitive data
+- Health check integration
+- Graceful shutdown handling
 
-## 🚧 Zukünftige Erweiterungen
+## 🚧 Future Enhancements
 
-- [ ] **Web GUI** - React-basierte Benutzeroberfläche
-- [ ] **Erweiterte Filterung** - Konfigurierbare Event-Filter
-- [ ] **Datenbank-Integration** - Historische Datenspeicherung
-- [ ] **Alerting** - Benachrichtigungen bei kritischen Events
-- [ ] **Multi-Tenant** - Unterstützung mehrerer F1-Sessions
-- [ ] **WebSocket API** - Echtzeit-Daten für GUI
+- [ ] **Web GUI** - React-based user interface
+- [ ] **Advanced Filtering** - Configurable event filters
+- [ ] **Database Integration** - Historical data storage
+- [ ] **Alerting** - Notifications for critical events
+- [ ] **Multi-Tenant** - Support for multiple F1 sessions
+- [ ] **WebSocket API** - Real-time data for GUI
 
 ## 📝 Best Practices
 
-- **Typsicherheit**: Vollständige TypeScript-Unterstützung
-- **Error Handling**: Umfassendes Error-Management
-- **Logging**: Strukturiertes Logging mit konfigurierbaren Leveln
-- **Testing**: Unit- und Integration-Tests
-- **Code-Qualität**: ESLint und Prettier Integration
-- **Monitoring**: Health-Checks und Metriken
-- **Containerisierung**: Docker-First-Ansatz
-- **Documentation**: Comprehensive README und Code-Kommentare
+- **Type Safety**: Full TypeScript support
+- **Error Handling**: Comprehensive error management
+- **Logging**: Structured logging with configurable levels
+- **Testing**: Unit and integration tests
+- **Code Quality**: ESLint and Prettier integration
+- **Monitoring**: Health checks and metrics
+- **Containerization**: Docker-first approach
+- **Documentation**: Comprehensive README and code comments
 
-## 🤝 Beitragen
+## 🤝 Contributing
 
-1. Fork das Repository
-2. Erstelle einen Feature-Branch (`git checkout -b feature/amazing-feature`)
-3. Committe deine Änderungen (`git commit -m 'Add amazing feature'`)
-4. Pushe den Branch (`git push origin feature/amazing-feature`)
-5. Öffne einen Pull Request
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 Lizenz
+## 📄 License
 
-Dieses Projekt steht unter der MIT-Lizenz. Siehe [LICENSE](LICENSE) für Details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 🆘 Support
 
-- **Issues**: GitHub Issues für Bug-Reports und Feature-Requests
-- **Discussions**: GitHub Discussions für Fragen und Community-Support
-- **Wiki**: Erweiterte Dokumentation im GitHub Wiki
+- **Issues**: GitHub Issues for bug reports and feature requests
+- **Discussions**: GitHub Discussions for questions and community support
+- **Wiki**: Extended documentation in the GitHub Wiki
 
 ## 🏁 Acknowledgments
 
-- Formula 1 für die Live-Timing-Daten
+- Formula 1 for the Live Timing data
 - SignalR Community
 - MQTT.org
 - Home Assistant Community

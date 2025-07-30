@@ -1,52 +1,57 @@
 # DevContainer Troubleshooting
 
-## Problem: DevContainer konnte nicht gestartet werden
+## Problem: DevContainer could not be started
 
-### Lösung
-Das DevContainer-Problem wurde behoben. Die ursprüngliche Konfiguration hatte folgende Probleme:
+### Solution
 
-1. **Dockerfile-Konflikt**: Das DevContainer verwendete ein Production-Dockerfile
-2. **Dependencies-Problem**: Die falsche Reihenfolge beim Kopieren und Installieren
-3. **ESLint-Versionskonflikt**: Inkompatible Versionen zwischen ESLint 9 und TypeScript-Plugins
+The DevContainer problem has been fixed. The original configuration had the following issues:
 
-### Was wurde geändert:
+1. **Dockerfile Conflict**: The DevContainer used a production Dockerfile
+2. **Dependencies Problem**: Wrong order when copying and installing
+3. **ESLint Version Conflict**: Incompatible versions between ESLint 9 and TypeScript plugins
+
+### What was changed:
 
 #### DevContainer (`.devcontainer/devcontainer.json`)
-- **Basis-Image**: Wechsel zu `mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye`
-- **Dockerfile entfernt**: Nutzt jetzt direkt das Microsoft DevContainer-Image
-- **Vereinfachte Konfiguration**: Weniger komplexe Setup-Schritte
 
-#### ESLint-Konfiguration
-- **Downgrade**: ESLint von v9 auf v8.57.0 für Kompatibilität
-- **TypeScript-Plugins**: Kompatible Versionen installiert
-- **Vereinfachte Config**: Prettier-Plugin temporär entfernt
+- **Base Image**: Switch to `mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye`
+- **Dockerfile removed**: Now directly uses the Microsoft DevContainer image
+- **Simplified Configuration**: Less complex setup steps
 
-### Jetzt funktioniert:
+#### ESLint Configuration
 
-1. **DevContainer starten:**
+- **Downgrade**: ESLint from v9 to v8.57.0 for compatibility
+- **TypeScript Plugins**: Compatible versions installed
+- **Simplified Config**: Prettier plugin temporarily removed
+
+### Now working:
+
+1. **Start DevContainer:**
+
    ```bash
    # In VS Code: Ctrl+Shift+P
    > Dev Containers: Reopen in Container
    ```
 
-2. **Lokale Entwicklung:**
+2. **Local Development:**
+
    ```bash
-   npm run dev:watch  # ✅ Funktioniert
-   npm run build     # ✅ Funktioniert  
-   npm test          # ✅ Funktioniert
-   npm run lint      # ✅ Funktioniert
+   npm run dev:watch  # ✅ Works
+   npm run build     # ✅ Works
+   npm test          # ✅ Works
+   npm run lint      # ✅ Works
    ```
 
-3. **Docker-Entwicklung:**
+3. **Docker Development:**
    ```bash
-   npm run docker:run  # ✅ Funktioniert
+   npm run docker:run  # ✅ Works
    ```
 
-### Projekt-Status: ✅ Komplett funktionsfähig
+### Project Status: ✅ Fully functional
 
-- TypeScript-Kompilierung: ✅
-- Tests (11 Tests): ✅
-- ESLint: ✅ (mit Warnung wegen TypeScript-Version)
+- TypeScript compilation: ✅
+- Tests (11 tests): ✅
+- ESLint: ✅ (with warning due to TypeScript version)
 - DevContainer: ✅
 - Docker Compose: ✅
-- Home Assistant Addon: ✅ Vorbereitet
+- Home Assistant Addon: ✅ Prepared
