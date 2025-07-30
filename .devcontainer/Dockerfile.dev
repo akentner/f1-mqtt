@@ -1,0 +1,18 @@
+# Development Dockerfile für DevContainer
+FROM mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye
+
+# Installiere zusätzliche Tools
+RUN apt-get update && apt-get install -y \
+    mosquitto-clients \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Erstelle Arbeitsverzeichnis
+WORKDIR /workspace
+
+# Exponiere Ports für Development
+EXPOSE 3000 1883 8883
+
+# Startkommando für Development
+CMD ["sleep", "infinity"]

@@ -1,0 +1,42 @@
+# Verwende Node.js 20 als Basis (kompatibel mit Home Assistant Addons)
+FROM node:20-alpine
+
+# Installiere zusätzliche Tools für Home Assistant Addon Support
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    openssh-client \
+    mosquitto-clients
+
+# Erstelle Arbeitsverzeichnis
+WORKDIR /workspace
+
+# Kopiere Package-Dateien
+COPY package*.json ./
+
+# Installiere Dependencies
+RUN npm ci --only=production
+
+# Kopiere Quellcode
+COPY . .
+
+# Baue das Projekt
+RUN npm run build
+
+# Benutzer erstellen (für Security)
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Wechsle zu nodejs user
+USER nodejs
+
+# Exponiere Ports
+EXPOSE 3000
+
+# Health Check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Startkommando
+CMD ["npm", "start"]

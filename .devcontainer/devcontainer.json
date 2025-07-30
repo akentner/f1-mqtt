@@ -1,0 +1,61 @@
+{
+  "name": "F1 MQTT Server",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopContainer",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint",
+        "ms-vscode.vscode-json",
+        "ms-vscode.test-adapter-converter",
+        "hbenl.vscode-test-explorer",
+        "ms-vscode.vscode-docker",
+        "ms-vscode.remote-containers"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.preferences.importModuleSpecifier": "relative",
+        "eslint.validate": ["typescript"],
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        }
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 1883, 8883],
+  "portsAttributes": {
+    "3000": {
+      "label": "Web Server",
+      "onAutoForward": "notify"
+    },
+    "1883": {
+      "label": "MQTT Broker",
+      "onAutoForward": "ignore"
+    },
+    "8883": {
+      "label": "MQTT SSL",
+      "onAutoForward": "ignore"
+    }
+  },
+
+  "postCreateCommand": "npm install && npm run build",
+
+  "remoteUser": "node",
+  
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ]
+}

@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # MQTT Broker for development/testing
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: f1-mqtt-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    restart: unless-stopped
+
+  # F1 MQTT Bridge Application
+  f1-mqtt-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: f1-mqtt-bridge
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - SIGNALR_HUB_URL=https://livetiming.formula1.com/signalr
+      - SIGNALR_HUB_NAME=f1TimingHub
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - MQTT_TOPIC_PREFIX=f1
+      - MQTT_QOS=1
+      - MQTT_RETAIN=false
+      - LOG_LEVEL=debug
+      - LOG_CONSOLE=true
+      - PORT=3000
+      - HEALTH_ENDPOINT=/health
+      - HA_DISCOVERY_PREFIX=homeassistant
+      - HA_NODE_ID=f1_telemetry
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+
+  # MQTT Explorer for debugging (optional)
+  mqtt-explorer:
+    image: smeagolworms4/mqtt-explorer
+    container_name: f1-mqtt-explorer
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
+  node_modules:
