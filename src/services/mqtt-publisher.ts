@@ -7,10 +7,57 @@ export class MqttPublisher extends EventEmitter {
   private client: mqtt.MqttClient | null = null;
   private config: MqttConfig;
   private isConnected = false;
+  private messageQueue: MqttMessage[] = [];
+  private memoryCleanupTimer: NodeJS.Timeout | null = null;
+  private readonly MAX_QUEUE_SIZE = 1000;
 
   constructor(config: MqttConfig) {
     super();
     this.config = config;
+
+    // Prevent memory leaks from EventEmitter
+    this.setMaxListeners(15);
+
+    // Start periodic memory cleanup
+    this.startMemoryCleanup();
+  }
+
+  private startMemoryCleanup(): void {
+    // Cleanup memory every 3 minutes for MQTT
+    this.memoryCleanupTimer = setInterval(
+      () => {
+        this.performMemoryCleanup();
+      },
+      3 * 60 * 1000
+    );
+  }
+
+  private performMemoryCleanup(): void {
+    try {
+      // Clear message queue if it gets too large
+      if (this.messageQueue.length > this.MAX_QUEUE_SIZE) {
+        const removedCount =
+          this.messageQueue.length - Math.floor(this.MAX_QUEUE_SIZE * 0.8);
+        this.messageQueue = this.messageQueue.slice(
+          -Math.floor(this.MAX_QUEUE_SIZE * 0.8)
+        );
+        logger.debug('🧹 MQTT: Cleaned up message queue', {
+          removedMessages: removedCount,
+          newSize: this.messageQueue.length,
+        });
+      }
+
+      // Log queue status
+      logger.debug('📊 MQTT Queue Status', {
+        queueSize: this.messageQueue.length,
+        connected: this.isConnected,
+        clientConnected: this.client?.connected || false,
+      });
+    } catch (error) {
+      logger.warn('MQTT memory cleanup failed', {
+        error: (error as Error).message,
+      });
+    }
   }
 
   async connect(): Promise<void> {
@@ -253,35 +300,43 @@ export class MqttPublisher extends EventEmitter {
 
   async disconnect(): Promise<void> {
     return new Promise((resolve) => {
-      if (this.client) {
-        logger.info('Disconnecting from MQTT broker...');
+      try {
+        // Clear memory cleanup timer
+        if (this.memoryCleanupTimer) {
+          clearInterval(this.memoryCleanupTimer);
+          this.memoryCleanupTimer = null;
+        }
 
-        // Publish offline status before disconnecting (graceful shutdown)
-        const willTopic =
-          this.config.willTopic || `${this.config.topicPrefix || 'f1'}/status`;
-        const willMessage = this.config.willMessage || 'offline';
+        // Clear message queue
+        this.messageQueue = [];
 
-        this.client.publish(
-          willTopic,
-          willMessage,
-          { qos: 1, retain: true },
-          () => {
-            // Give some time for the message to be sent before closing
-            setTimeout(() => {
-              if (this.client) {
-                this.client.end(false, {}, () => {
-                  this.client = null;
-                  this.isConnected = false;
-                  logger.info('Disconnected from MQTT broker');
-                  resolve();
-                });
-              } else {
-                resolve();
-              }
-            }, 100);
-          }
-        );
-      } else {
+        if (this.client && this.isConnected) {
+          logger.info('Disconnecting from MQTT broker...');
+
+          this.client.end(false, {}, () => {
+            this.isConnected = false;
+            this.client = null;
+
+            // Remove all event listeners to prevent memory leaks
+            this.removeAllListeners();
+
+            logger.info(
+              'Disconnected from MQTT broker and cleaned up resources'
+            );
+            resolve();
+          });
+        } else {
+          this.isConnected = false;
+          this.client = null;
+          this.removeAllListeners();
+          resolve();
+        }
+      } catch (error) {
+        logger.error('Error disconnecting from MQTT broker', {
+          error: (error as Error).message,
+        });
+        this.isConnected = false;
+        this.client = null;
         resolve();
       }
     });

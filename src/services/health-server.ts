@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import { Server } from 'http';
 import { EventProcessor } from './event-processor';
 import { logger } from '../utils/logger';
@@ -27,9 +27,14 @@ export class HealthServer {
     this.app.get(this.healthEndpoint, (req: Request, res: Response) => {
       const status = this.eventProcessor.getStatus();
       const isHealthy = status.signalRConnected && status.mqttConnected;
+      const memUsage = process.memoryUsage();
 
-      res.status(isHealthy ? 200 : 503).json({
-        status: isHealthy ? 'healthy' : 'unhealthy',
+      // Check for potential memory issues
+      const memoryWarning = memUsage.heapUsed > 512 * 1024 * 1024; // 512MB threshold
+      const finalStatus = isHealthy && !memoryWarning;
+
+      res.status(finalStatus ? 200 : 503).json({
+        status: finalStatus ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
         services: {
           signalR: status.signalRConnected ? 'connected' : 'disconnected',
@@ -40,7 +45,16 @@ export class HealthServer {
           processing: status.processing,
         },
         uptime: process.uptime(),
-        memory: process.memoryUsage(),
+        memory: {
+          ...memUsage,
+          warningThreshold: memoryWarning,
+          usage: {
+            rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+            heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+            heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+            external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+          },
+        },
       });
     });
 
@@ -81,6 +95,10 @@ export class HealthServer {
       const status = this.eventProcessor.getStatus();
       const memUsage = process.memoryUsage();
 
+      // Calculate memory usage percentages and warnings
+      const heapUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+      const memoryWarning = memUsage.heapUsed > 512 * 1024 * 1024 ? 1 : 0;
+
       // Prometheus-style metrics
       const metrics = [
         `# HELP f1_mqtt_queue_size Current size of the event queue`,
@@ -102,6 +120,14 @@ export class HealthServer {
         `f1_mqtt_memory_usage_bytes{type="heapUsed"} ${memUsage.heapUsed}`,
         `f1_mqtt_memory_usage_bytes{type="external"} ${memUsage.external}`,
         '',
+        `# HELP f1_mqtt_memory_heap_usage_percent Heap usage percentage`,
+        `# TYPE f1_mqtt_memory_heap_usage_percent gauge`,
+        `f1_mqtt_memory_heap_usage_percent ${heapUsagePercent.toFixed(2)}`,
+        '',
+        `# HELP f1_mqtt_memory_warning Memory warning indicator (1=warning, 0=ok)`,
+        `# TYPE f1_mqtt_memory_warning gauge`,
+        `f1_mqtt_memory_warning ${memoryWarning}`,
+        '',
         `# HELP f1_mqtt_uptime_seconds Application uptime in seconds`,
         `# TYPE f1_mqtt_uptime_seconds counter`,
         `f1_mqtt_uptime_seconds ${process.uptime()}`,
@@ -109,6 +135,47 @@ export class HealthServer {
 
       res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
       res.send(metrics);
+    });
+
+    // Memory debugging endpoint (only in debug mode)
+    this.app.get('/debug/memory', (req: Request, res: Response) => {
+      if (process.env.LOG_LEVEL !== 'debug') {
+        res
+          .status(403)
+          .json({ error: 'Debug endpoint only available in debug mode' });
+        return;
+      }
+
+      const memUsage = process.memoryUsage();
+
+      // Force garbage collection if available and requested
+      if (req.query.gc === 'true' && global.gc) {
+        global.gc();
+        logger.info('Manual garbage collection triggered via API');
+      }
+
+      const memAfterGC = process.memoryUsage();
+
+      res.json({
+        timestamp: new Date().toISOString(),
+        memoryBefore: {
+          rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+          heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+          external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+        },
+        memoryAfter: {
+          rss: `${Math.round(memAfterGC.rss / 1024 / 1024)}MB`,
+          heapUsed: `${Math.round(memAfterGC.heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(memAfterGC.heapTotal / 1024 / 1024)}MB`,
+          external: `${Math.round(memAfterGC.external / 1024 / 1024)}MB`,
+        },
+        gcAvailable: !!global.gc,
+        gcTriggered: req.query.gc === 'true' && !!global.gc,
+        uptime: process.uptime(),
+        heapUsagePercent:
+          ((memAfterGC.heapUsed / memAfterGC.heapTotal) * 100).toFixed(2) + '%',
+      });
     });
 
     // Root endpoint
@@ -136,21 +203,19 @@ export class HealthServer {
 
     // Error handler
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    this.app.use(
-      (error: Error, req: Request, res: Response, _next: NextFunction) => {
-        logger.error('Express error handler', {
-          error: error.message,
-          url: req.url,
-          method: req.method,
-        });
+    this.app.use((error: Error, req: Request, res: Response) => {
+      logger.error('Express error handler', {
+        error: error.message,
+        url: req.url,
+        method: req.method,
+      });
 
-        res.status(500).json({
-          error: 'Internal Server Error',
-          message: 'An unexpected error occurred',
-          timestamp: new Date().toISOString(),
-        });
-      }
-    );
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred',
+        timestamp: new Date().toISOString(),
+      });
+    });
   }
 
   start(): Promise<void> {

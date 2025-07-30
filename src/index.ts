@@ -8,14 +8,77 @@ import { HealthServer } from './services/health-server';
 import { logger } from './utils/logger';
 import config from './config';
 
+// Memory leak detection and monitoring
+class MemoryMonitor {
+  private monitoringInterval: NodeJS.Timeout | null = null;
+  private lastMemoryUsage: NodeJS.MemoryUsage | null = null;
+
+  start(): void {
+    // Monitor memory every 60 seconds
+    this.monitoringInterval = setInterval(() => {
+      this.checkMemoryUsage();
+    }, 60 * 1000);
+
+    logger.info('🔍 Memory monitoring started');
+  }
+
+  stop(): void {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+  }
+
+  private checkMemoryUsage(): void {
+    const currentMemory = process.memoryUsage();
+
+    if (this.lastMemoryUsage) {
+      const heapGrowth = currentMemory.heapUsed - this.lastMemoryUsage.heapUsed;
+      const rssGrowth = currentMemory.rss - this.lastMemoryUsage.rss;
+
+      // Log if significant memory increase (> 50MB)
+      if (heapGrowth > 50 * 1024 * 1024 || rssGrowth > 50 * 1024 * 1024) {
+        logger.warn('⚠️ Significant memory increase detected', {
+          heapGrowth: `${Math.round(heapGrowth / 1024 / 1024)}MB`,
+          rssGrowth: `${Math.round(rssGrowth / 1024 / 1024)}MB`,
+          currentHeap: `${Math.round(currentMemory.heapUsed / 1024 / 1024)}MB`,
+          currentRSS: `${Math.round(currentMemory.rss / 1024 / 1024)}MB`,
+        });
+      }
+    }
+
+    // Warn if memory usage is high
+    if (currentMemory.heapUsed > 400 * 1024 * 1024) {
+      // 400MB threshold
+      logger.warn('🚨 High memory usage detected', {
+        heapUsed: `${Math.round(currentMemory.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(currentMemory.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(currentMemory.rss / 1024 / 1024)}MB`,
+        external: `${Math.round(currentMemory.external / 1024 / 1024)}MB`,
+      });
+
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+        logger.info('🗑️ Forced garbage collection due to high memory usage');
+      }
+    }
+
+    this.lastMemoryUsage = currentMemory;
+  }
+}
+
 class F1MqttBridge {
   private signalRClient: SignalRClient;
   private mqttPublisher: MqttPublisher;
   private eventProcessor: EventProcessor;
   private healthServer: HealthServer;
+  private memoryMonitor: MemoryMonitor;
   private isShuttingDown = false;
 
   constructor() {
+    // Initialize memory monitoring
+    this.memoryMonitor = new MemoryMonitor();
     // Initialize logger with configuration
     const loggerInstance = new (require('./utils/logger').Logger)(
       config.logging.level,
@@ -137,6 +200,9 @@ class F1MqttBridge {
         environment: process.env.NODE_ENV || 'development',
       });
 
+      // Start memory monitoring
+      this.memoryMonitor.start();
+
       // Start health server first
       await this.healthServer.start();
       logger.info('Health server started', {
@@ -206,6 +272,9 @@ class F1MqttBridge {
     logger.info('Shutting down F1 MQTT Bridge...');
 
     try {
+      // Stop memory monitoring
+      this.memoryMonitor.stop();
+
       // Publish offline status for Home Assistant
       if (config.homeAssistant) {
         await this.mqttPublisher.publish({

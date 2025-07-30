@@ -42,5 +42,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
-# Startkommando
-CMD ["node", "dist/index.js"]
+# Startkommando mit Garbage Collection aktiviert
+CMD ["node", "--expose-gc", "--max-old-space-size=512", "dist/index.js"]

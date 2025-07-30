@@ -25,6 +25,11 @@ export class SignalRClient extends EventEmitter {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private memoryCleanupTimer: NodeJS.Timeout | null = null;
+  private messageBuffer: string[] = [];
+  private readonly MAX_BUFFER_SIZE = 100;
 
   // F1 Live Timing API endpoints
   private readonly NEGOTIATE_URL =
@@ -36,6 +41,12 @@ export class SignalRClient extends EventEmitter {
   constructor(config: SignalRConfig) {
     super();
     this.config = config;
+
+    // Prevent memory leaks from EventEmitter
+    this.setMaxListeners(20);
+
+    // Start periodic memory cleanup
+    this.startMemoryCleanup();
   }
 
   async connect(): Promise<void> {
@@ -73,12 +84,53 @@ export class SignalRClient extends EventEmitter {
         logger.info(
           `Retrying connection in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
         );
-        setTimeout(() => this.connect(), delay);
+        this.reconnectTimer = setTimeout(() => this.connect(), delay);
       } else {
         this.emit('connectionFailed', error);
       }
 
       throw error;
+    }
+  }
+
+  private startMemoryCleanup(): void {
+    // Cleanup memory every 5 minutes
+    this.memoryCleanupTimer = setInterval(
+      () => {
+        this.performMemoryCleanup();
+      },
+      5 * 60 * 1000
+    );
+  }
+
+  private performMemoryCleanup(): void {
+    try {
+      // Clear message buffer if it gets too large
+      if (this.messageBuffer.length > this.MAX_BUFFER_SIZE) {
+        this.messageBuffer = this.messageBuffer.slice(-50); // Keep only last 50
+        logger.debug('🧹 Cleaned up message buffer', {
+          newSize: this.messageBuffer.length,
+        });
+      }
+
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+        logger.debug('🗑️ Forced garbage collection');
+      }
+
+      // Log current memory usage
+      const memUsage = process.memoryUsage();
+      logger.debug('💾 Memory usage after cleanup', {
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+        external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+      });
+    } catch (error) {
+      logger.warn('Memory cleanup failed', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -260,53 +312,84 @@ export class SignalRClient extends EventEmitter {
 
   private handleMessage(data: string): void {
     try {
-      // Log raw SignalR message
+      // Add to message buffer for debugging (with size limit)
+      this.messageBuffer.push(data);
+      if (this.messageBuffer.length > this.MAX_BUFFER_SIZE) {
+        this.messageBuffer.shift(); // Remove oldest message
+      }
+
+      // Log raw SignalR message (but limit data size to prevent memory issues)
+      const truncatedData =
+        data.length > 1000 ? data.substring(0, 1000) + '...' : data;
       logger.debug('📨 RAW SignalR Message', {
-        rawData: data,
+        rawData: truncatedData,
         dataLength: data.length,
         timestamp: new Date().toISOString(),
       });
 
-      const payload = JSON.parse(data);
+      // Parse with error boundary to prevent memory leaks from malformed JSON
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(data) as Record<string, unknown>;
+      } catch (parseError) {
+        logger.warn('Failed to parse SignalR message', {
+          error: (parseError as Error).message,
+          dataPreview: data.substring(0, 200),
+        });
+        return;
+      }
 
-      // Log parsed payload structure
+      // Log parsed payload structure (with size limits)
       logger.debug('📋 Parsed SignalR Payload', {
         payloadType: typeof payload,
         payloadKeys:
-          typeof payload === 'object' ? Object.keys(payload) : payload,
-        hasM: 'M' in payload,
-        hasR: 'R' in payload,
-        hasC: 'C' in payload,
-        hasS: 'S' in payload,
-        hasI: 'I' in payload,
-        fullPayload: JSON.stringify(payload, null, 2),
+          typeof payload === 'object' && payload !== null
+            ? Object.keys(payload)
+            : 'not-object',
+        hasM: payload && typeof payload === 'object' && 'M' in payload,
+        hasR: payload && typeof payload === 'object' && 'R' in payload,
+        hasC: payload && typeof payload === 'object' && 'C' in payload,
+        hasS: payload && typeof payload === 'object' && 'S' in payload,
+        hasI: payload && typeof payload === 'object' && 'I' in payload,
+        // Only include full payload in debug if it's small
+        fullPayload:
+          JSON.stringify(payload).length < 500
+            ? JSON.stringify(payload, null, 2)
+            : '[Large payload omitted]',
       });
 
       // Handle hub messages (M property)
-      if (payload.M) {
+      if (payload.M && Array.isArray(payload.M)) {
         logger.debug('🔄 Processing Hub Messages (M)', {
           messageCount: payload.M.length,
           messages: payload.M.map((msg: Record<string, unknown>) => ({
             method: msg.M,
             hasArgs: 'A' in msg,
-            argCount: msg.A ? (msg.A as unknown[]).length : 0,
+            argCount: msg.A && Array.isArray(msg.A) ? msg.A.length : 0,
           })),
         });
 
         for (const hubMsg of payload.M) {
-          if (hubMsg.M === 'feed') {
-            this.processFeedMessage(hubMsg);
+          if (
+            typeof hubMsg === 'object' &&
+            hubMsg !== null &&
+            (hubMsg as Record<string, unknown>).M === 'feed'
+          ) {
+            this.processFeedMessage(hubMsg as Record<string, unknown>);
           }
         }
       }
 
       // Handle response messages (R property)
-      if (payload.R) {
+      if (payload.R && typeof payload.R === 'object' && payload.R !== null) {
         logger.debug('📊 Processing Response Messages (R)', {
           responseKeys: Object.keys(payload.R),
-          responseData: JSON.stringify(payload.R, null, 2),
+          responseData:
+            JSON.stringify(payload.R).length < 500
+              ? JSON.stringify(payload.R, null, 2)
+              : '[Large response omitted]',
         });
-        this.processResponseMessage(payload.R);
+        this.processResponseMessage(payload.R as Record<string, unknown>);
       }
 
       // Handle other SignalR protocol messages
@@ -410,16 +493,45 @@ export class SignalRClient extends EventEmitter {
 
   async disconnect(): Promise<void> {
     try {
+      // Clear all timers to prevent memory leaks
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
+
+      if (this.memoryCleanupTimer) {
+        clearInterval(this.memoryCleanupTimer);
+        this.memoryCleanupTimer = null;
+      }
+
+      // Close WebSocket connection
       if (this.ws) {
         this.ws.close();
         this.ws = null;
       }
 
+      // Clear connection state
       this.isConnectedState = false;
       this.connectionToken = null;
       this.cookie = null;
 
-      logger.info('Disconnected from F1 SignalR service');
+      // Clear message buffer
+      this.messageBuffer = [];
+
+      // Remove all event listeners to prevent memory leaks
+      this.removeAllListeners();
+
+      // Final memory cleanup
+      this.performMemoryCleanup();
+
+      logger.info(
+        'Disconnected from F1 SignalR service and cleaned up resources'
+      );
       this.emit('disconnected');
     } catch (error) {
       logger.error('Error disconnecting from F1 SignalR service', {
