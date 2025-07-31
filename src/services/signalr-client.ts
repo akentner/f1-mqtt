@@ -4,6 +4,42 @@ import https from 'https';
 import { SignalRConfig, F1Event } from '../types';
 import { logger } from '../utils/logger';
 
+// SignalR Client Default Values
+const SIGNALR_DEFAULTS = {
+  // Connection settings
+  MAX_RECONNECT_ATTEMPTS: 5,
+  RECONNECT_DELAY_MS: 2000,
+  MAX_EVENT_LISTENERS: 20,
+
+  // Buffer and memory management
+  MAX_BUFFER_SIZE: 100,
+  BUFFER_KEEP_SIZE: 50,
+  MEMORY_CLEANUP_INTERVAL_MS: 5 * 60 * 1000, // 5 minutes
+
+  // Protocol settings
+  CLIENT_PROTOCOL: '1.5',
+  TRANSPORT: 'webSockets',
+
+  // Timeouts
+  REQUEST_TIMEOUT_MS: 10000,
+  WEBSOCKET_TIMEOUT_MS: 10000,
+
+  // HTTP Headers
+  USER_AGENT: 'BestHTTP',
+  ACCEPT_ENCODING: 'gzip,identity',
+
+  // Message size limits
+  MESSAGE_TRUNCATE_SIZE: 1000,
+  DEBUG_PREVIEW_SIZE: 100,
+  PARSE_ERROR_PREVIEW_SIZE: 200,
+  LARGE_PAYLOAD_THRESHOLD: 500,
+
+  // F1 Live Timing API endpoints
+  NEGOTIATE_URL: 'https://livetiming.formula1.com/signalr/negotiate',
+  CONNECT_URL: 'wss://livetiming.formula1.com/signalr/connect',
+  HUB_DATA: '[{"name":"Streaming"}]',
+} as const;
+
 interface NegotiateResponse {
   ConnectionToken: string;
   ConnectionId: string;
@@ -23,27 +59,25 @@ export class SignalRClient extends EventEmitter {
   private cookie: string | null = null;
   private isConnectedState = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 2000;
+  private maxReconnectAttempts = SIGNALR_DEFAULTS.MAX_RECONNECT_ATTEMPTS;
+  private reconnectDelay = SIGNALR_DEFAULTS.RECONNECT_DELAY_MS;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private memoryCleanupTimer: NodeJS.Timeout | null = null;
   private messageBuffer: string[] = [];
-  private readonly MAX_BUFFER_SIZE = 100;
+  private readonly MAX_BUFFER_SIZE = SIGNALR_DEFAULTS.MAX_BUFFER_SIZE;
 
   // F1 Live Timing API endpoints
-  private readonly NEGOTIATE_URL =
-    'https://livetiming.formula1.com/signalr/negotiate';
-  private readonly CONNECT_URL =
-    'wss://livetiming.formula1.com/signalr/connect';
-  private readonly HUB_DATA = '[{"name":"Streaming"}]';
+  private readonly NEGOTIATE_URL = SIGNALR_DEFAULTS.NEGOTIATE_URL;
+  private readonly CONNECT_URL = SIGNALR_DEFAULTS.CONNECT_URL;
+  private readonly HUB_DATA = SIGNALR_DEFAULTS.HUB_DATA;
 
   constructor(config: SignalRConfig) {
     super();
     this.config = config;
 
     // Prevent memory leaks from EventEmitter
-    this.setMaxListeners(20);
+    this.setMaxListeners(SIGNALR_DEFAULTS.MAX_EVENT_LISTENERS);
 
     // Start periodic memory cleanup
     this.startMemoryCleanup();
@@ -95,19 +129,18 @@ export class SignalRClient extends EventEmitter {
 
   private startMemoryCleanup(): void {
     // Cleanup memory every 5 minutes
-    this.memoryCleanupTimer = setInterval(
-      () => {
-        this.performMemoryCleanup();
-      },
-      5 * 60 * 1000
-    );
+    this.memoryCleanupTimer = setInterval(() => {
+      this.performMemoryCleanup();
+    }, SIGNALR_DEFAULTS.MEMORY_CLEANUP_INTERVAL_MS);
   }
 
   private performMemoryCleanup(): void {
     try {
       // Clear message buffer if it gets too large
       if (this.messageBuffer.length > this.MAX_BUFFER_SIZE) {
-        this.messageBuffer = this.messageBuffer.slice(-50); // Keep only last 50
+        this.messageBuffer = this.messageBuffer.slice(
+          -SIGNALR_DEFAULTS.BUFFER_KEEP_SIZE
+        ); // Keep only last 50
         logger.debug('🧹 Cleaned up message buffer', {
           newSize: this.messageBuffer.length,
         });
@@ -137,7 +170,7 @@ export class SignalRClient extends EventEmitter {
   private async negotiate(): Promise<void> {
     return new Promise((resolve, reject) => {
       const params = new URLSearchParams({
-        clientProtocol: '1.5',
+        clientProtocol: SIGNALR_DEFAULTS.CLIENT_PROTOCOL,
         connectionData: this.HUB_DATA,
       });
 
@@ -147,8 +180,8 @@ export class SignalRClient extends EventEmitter {
         url,
         {
           headers: {
-            'User-Agent': 'BestHTTP',
-            'Accept-Encoding': 'gzip,identity',
+            'User-Agent': SIGNALR_DEFAULTS.USER_AGENT,
+            'Accept-Encoding': SIGNALR_DEFAULTS.ACCEPT_ENCODING,
           },
         },
         (res) => {
@@ -188,7 +221,7 @@ export class SignalRClient extends EventEmitter {
         reject(new Error(`Negotiate request failed: ${error.message}`));
       });
 
-      req.setTimeout(10000, () => {
+      req.setTimeout(SIGNALR_DEFAULTS.REQUEST_TIMEOUT_MS, () => {
         req.destroy();
         reject(new Error('Negotiate request timeout'));
       });
@@ -203,8 +236,8 @@ export class SignalRClient extends EventEmitter {
       }
 
       const params = new URLSearchParams({
-        transport: 'webSockets',
-        clientProtocol: '1.5',
+        transport: SIGNALR_DEFAULTS.TRANSPORT,
+        clientProtocol: SIGNALR_DEFAULTS.CLIENT_PROTOCOL,
         connectionToken: this.connectionToken,
         connectionData: this.HUB_DATA,
       });
@@ -212,8 +245,8 @@ export class SignalRClient extends EventEmitter {
       const url = `${this.CONNECT_URL}?${params.toString()}`;
 
       const headers: Record<string, string> = {
-        'User-Agent': 'BestHTTP',
-        'Accept-Encoding': 'gzip,identity',
+        'User-Agent': SIGNALR_DEFAULTS.USER_AGENT,
+        'Accept-Encoding': SIGNALR_DEFAULTS.ACCEPT_ENCODING,
       };
 
       if (this.cookie) {
@@ -225,7 +258,7 @@ export class SignalRClient extends EventEmitter {
       this.ws.on('open', () => {
         logger.debug('🔌 WebSocket connection established');
         logger.info('WebSocket connection opened', {
-          url: url.substring(0, 100) + '...',
+          url: url.substring(0, SIGNALR_DEFAULTS.DEBUG_PREVIEW_SIZE) + '...',
           readyState: this.ws?.readyState,
         });
         resolve();
@@ -235,7 +268,10 @@ export class SignalRClient extends EventEmitter {
         const rawMessage = data.toString();
         logger.debug('📥 Raw WebSocket Message Received', {
           messageLength: rawMessage.length,
-          messagePreview: rawMessage.substring(0, 100),
+          messagePreview: rawMessage.substring(
+            0,
+            SIGNALR_DEFAULTS.DEBUG_PREVIEW_SIZE
+          ),
           timestamp: new Date().toISOString(),
         });
         this.handleMessage(rawMessage);
@@ -262,7 +298,7 @@ export class SignalRClient extends EventEmitter {
           this.ws?.close();
           reject(new Error('WebSocket connection timeout'));
         }
-      }, 10000);
+      }, SIGNALR_DEFAULTS.WEBSOCKET_TIMEOUT_MS);
     });
   }
 
@@ -277,20 +313,20 @@ export class SignalRClient extends EventEmitter {
       A: [
         [
           'RaceControlMessages',
-          'TimingData',
-          'CarData.z',
-          'Position.z',
-          'ExtrapolatedClock',
-          'TopThree',
-          'RcmSeries',
-          'TimingStats',
-          'TimingAppData',
-          'WeatherData',
+          // 'TimingData',
+          // 'CarData.z',
+          // 'Position.z',
+          // 'ExtrapolatedClock',
+          // 'TopThree',
+          // 'RcmSeries',
+          // 'TimingStats',
+          // 'TimingAppData',
+          // 'WeatherData',
           'TrackStatus',
-          'DriverList',
-          'SessionInfo',
-          'SessionData',
-          'LapCount',
+          // 'DriverList',
+          // 'SessionInfo',
+          // 'SessionData',
+          // 'LapCount',
         ],
       ],
       I: 1,
@@ -320,7 +356,9 @@ export class SignalRClient extends EventEmitter {
 
       // Log raw SignalR message (but limit data size to prevent memory issues)
       const truncatedData =
-        data.length > 1000 ? data.substring(0, 1000) + '...' : data;
+        data.length > SIGNALR_DEFAULTS.MESSAGE_TRUNCATE_SIZE
+          ? data.substring(0, SIGNALR_DEFAULTS.MESSAGE_TRUNCATE_SIZE) + '...'
+          : data;
       logger.debug('📨 RAW SignalR Message', {
         rawData: truncatedData,
         dataLength: data.length,
@@ -334,7 +372,10 @@ export class SignalRClient extends EventEmitter {
       } catch (parseError) {
         logger.warn('Failed to parse SignalR message', {
           error: (parseError as Error).message,
-          dataPreview: data.substring(0, 200),
+          dataPreview: data.substring(
+            0,
+            SIGNALR_DEFAULTS.PARSE_ERROR_PREVIEW_SIZE
+          ),
         });
         return;
       }
@@ -353,7 +394,8 @@ export class SignalRClient extends EventEmitter {
         hasI: payload && typeof payload === 'object' && 'I' in payload,
         // Only include full payload in debug if it's small
         fullPayload:
-          JSON.stringify(payload).length < 500
+          JSON.stringify(payload).length <
+          SIGNALR_DEFAULTS.LARGE_PAYLOAD_THRESHOLD
             ? JSON.stringify(payload, null, 2)
             : '[Large payload omitted]',
       });
@@ -385,7 +427,8 @@ export class SignalRClient extends EventEmitter {
         logger.debug('📊 Processing Response Messages (R)', {
           responseKeys: Object.keys(payload.R),
           responseData:
-            JSON.stringify(payload.R).length < 500
+            JSON.stringify(payload.R).length <
+            SIGNALR_DEFAULTS.LARGE_PAYLOAD_THRESHOLD
               ? JSON.stringify(payload.R, null, 2)
               : '[Large response omitted]',
         });
@@ -409,7 +452,7 @@ export class SignalRClient extends EventEmitter {
     } catch (error) {
       logger.error('❌ Failed to parse SignalR message', {
         error: (error as Error).message,
-        rawData: data.substring(0, 500),
+        rawData: data.substring(0, SIGNALR_DEFAULTS.LARGE_PAYLOAD_THRESHOLD),
         dataLength: data.length,
         stack: (error as Error).stack,
       });
@@ -473,7 +516,10 @@ export class SignalRClient extends EventEmitter {
       logger.debug('🔄 Processing Response Entry', {
         streamName,
         streamDataType: typeof streamData,
-        streamDataPreview: JSON.stringify(streamData).substring(0, 200),
+        streamDataPreview: JSON.stringify(streamData).substring(
+          0,
+          SIGNALR_DEFAULTS.PARSE_ERROR_PREVIEW_SIZE
+        ),
       });
 
       const event: F1Event = {
