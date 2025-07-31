@@ -4,6 +4,81 @@ import https from 'https';
 import { SignalRConfig, F1Event } from '../types';
 import { logger } from '../utils/logger';
 
+/**
+ * F1 Live Timing Stream Types
+ * 
+ * Enumeration of all available F1 Live Timing data streams.
+ * Each stream provides different types of real-time race data.
+ */
+export enum F1Stream {
+  // Race Control and Status
+  RACE_CONTROL_MESSAGES = 'RaceControlMessages',
+  TRACK_STATUS = 'TrackStatus',
+  SESSION_INFO = 'SessionInfo',
+  SESSION_DATA = 'SessionData',
+
+  // Timing and Position Data
+  TIMING_DATA = 'TimingData',
+  CAR_DATA = 'CarData.z',
+  POSITION = 'Position.z',
+  EXTRAPOLATED_CLOCK = 'ExtrapolatedClock',
+  LAP_COUNT = 'LapCount',
+
+  // Statistics and Analysis
+  TOP_THREE = 'TopThree',
+  RCM_SERIES = 'RcmSeries',
+  TIMING_STATS = 'TimingStats',
+  TIMING_APP_DATA = 'TimingAppData',
+
+  // Additional Data
+  WEATHER_DATA = 'WeatherData',
+  DRIVER_LIST = 'DriverList',
+}
+
+/**
+ * Predefined stream sets for different use cases
+ * 
+ * BASIC: Minimal set for basic race monitoring
+ * ESSENTIAL: Essential race data for timing and position
+ * FULL: Complete data set with all available streams (default)
+ * ALL: All available streams (same as FULL currently)
+ */
+export const F1_STREAM_SETS = {
+  // Minimal set for basic race monitoring
+  BASIC: [F1Stream.RACE_CONTROL_MESSAGES, F1Stream.TRACK_STATUS],
+
+  // Essential race data
+  ESSENTIAL: [
+    F1Stream.RACE_CONTROL_MESSAGES,
+    F1Stream.TRACK_STATUS,
+    F1Stream.TIMING_DATA,
+    F1Stream.POSITION,
+    F1Stream.SESSION_INFO,
+  ],
+
+  // Full data set (currently used)
+  FULL: [
+    F1Stream.RACE_CONTROL_MESSAGES,
+    F1Stream.TIMING_DATA,
+    F1Stream.CAR_DATA,
+    F1Stream.POSITION,
+    F1Stream.EXTRAPOLATED_CLOCK,
+    F1Stream.TOP_THREE,
+    F1Stream.RCM_SERIES,
+    F1Stream.TIMING_STATS,
+    F1Stream.TIMING_APP_DATA,
+    F1Stream.WEATHER_DATA,
+    F1Stream.TRACK_STATUS,
+    F1Stream.DRIVER_LIST,
+    F1Stream.SESSION_INFO,
+    F1Stream.SESSION_DATA,
+    F1Stream.LAP_COUNT,
+  ],
+
+  // All available streams
+  ALL: Object.values(F1Stream),
+} as const;
+
 // SignalR Client Default Values
 const SIGNALR_DEFAULTS = {
   // Connection settings
@@ -38,6 +113,14 @@ const SIGNALR_DEFAULTS = {
   NEGOTIATE_URL: 'https://livetiming.formula1.com/signalr/negotiate',
   CONNECT_URL: 'wss://livetiming.formula1.com/signalr/connect',
   HUB_DATA: '[{"name":"Streaming"}]',
+
+  // F1 Stream Configuration
+  DEFAULT_STREAM_SET: F1_STREAM_SETS.FULL,
+
+  // SignalR Protocol
+  HUB_NAME: 'Streaming',
+  SUBSCRIBE_METHOD: 'Subscribe',
+  MESSAGE_ID: 1,
 } as const;
 
 interface NegotiateResponse {
@@ -66,6 +149,8 @@ export class SignalRClient extends EventEmitter {
   private memoryCleanupTimer: NodeJS.Timeout | null = null;
   private messageBuffer: string[] = [];
   private readonly MAX_BUFFER_SIZE = SIGNALR_DEFAULTS.MAX_BUFFER_SIZE;
+  private currentStreamSet: readonly string[] =
+    SIGNALR_DEFAULTS.DEFAULT_STREAM_SET;
 
   // F1 Live Timing API endpoints
   private readonly NEGOTIATE_URL = SIGNALR_DEFAULTS.NEGOTIATE_URL;
@@ -308,28 +393,10 @@ export class SignalRClient extends EventEmitter {
     }
 
     const subscribeMsg = {
-      H: 'Streaming',
-      M: 'Subscribe',
-      A: [
-        [
-          'RaceControlMessages',
-          // 'TimingData',
-          // 'CarData.z',
-          // 'Position.z',
-          // 'ExtrapolatedClock',
-          // 'TopThree',
-          // 'RcmSeries',
-          // 'TimingStats',
-          // 'TimingAppData',
-          // 'WeatherData',
-          'TrackStatus',
-          // 'DriverList',
-          // 'SessionInfo',
-          // 'SessionData',
-          // 'LapCount',
-        ],
-      ],
-      I: 1,
+      H: SIGNALR_DEFAULTS.HUB_NAME,
+      M: SIGNALR_DEFAULTS.SUBSCRIBE_METHOD,
+      A: [this.currentStreamSet],
+      I: SIGNALR_DEFAULTS.MESSAGE_ID,
     };
 
     const subscribeString = JSON.stringify(subscribeMsg);
@@ -605,5 +672,45 @@ export class SignalRClient extends EventEmitter {
       default:
         return 'Unknown';
     }
+  }
+
+  /**
+   * Set the F1 stream set to subscribe to
+   * @param streamSet - Array of F1 stream names or predefined stream set
+   */
+  setStreamSet(
+    streamSet: readonly string[] | keyof typeof F1_STREAM_SETS
+  ): void {
+    if (typeof streamSet === 'string') {
+      this.currentStreamSet = F1_STREAM_SETS[streamSet];
+    } else {
+      this.currentStreamSet = streamSet;
+    }
+
+    logger.info('F1 stream set updated', {
+      streamCount: this.currentStreamSet.length,
+      streams: this.currentStreamSet,
+    });
+  }
+
+  /**
+   * Get the currently configured stream set
+   */
+  getCurrentStreamSet(): readonly string[] {
+    return this.currentStreamSet;
+  }
+
+  /**
+   * Get available predefined stream sets
+   */
+  getAvailableStreamSets(): typeof F1_STREAM_SETS {
+    return F1_STREAM_SETS;
+  }
+
+  /**
+   * Get all available F1 stream types
+   */
+  getAvailableStreams(): typeof F1Stream {
+    return F1Stream;
   }
 }

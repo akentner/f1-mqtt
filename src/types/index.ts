@@ -1,3 +1,6 @@
+// Import F1 stream types from SignalR client
+export { F1Stream, F1_STREAM_SETS } from '../services/signalr-client';
+
 // Configuration interface definitions
 export interface SignalRConfig {
   hubUrl: string;
