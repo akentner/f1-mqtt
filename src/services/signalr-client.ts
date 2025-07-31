@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 
 /**
  * F1 Live Timing Stream Types
- * 
+ *
  * Enumeration of all available F1 Live Timing data streams.
  * Each stream provides different types of real-time race data.
  */
@@ -37,7 +37,7 @@ export enum F1Stream {
 
 /**
  * Predefined stream sets for different use cases
- * 
+ *
  * BASIC: Minimal set for basic race monitoring
  * ESSENTIAL: Essential race data for timing and position
  * FULL: Complete data set with all available streams (default)

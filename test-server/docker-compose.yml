@@ -1,0 +1,45 @@
+# F1 Mock Server Development Setup
+version: '3.8'
+
+services:
+  # F1 Mock SignalR Server
+  f1-mock-server:
+    build: .
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    volumes:
+      # Mount for development (optional)
+      - ./:/app
+      - /app/node_modules
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - f1-dev
+
+  # Optional: MQTT Broker for full stack testing
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - '1883:1883'
+      - '9001:9001'
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+    networks:
+      - f1-dev
+
+networks:
+  f1-dev:
+    driver: bridge
+
+volumes:
+  mosquitto_data:
+  mosquitto_logs:
