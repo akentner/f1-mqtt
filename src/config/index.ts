@@ -7,6 +7,13 @@ const DEFAULT_VALUES = {
     HUB_NAME: 'f1TimingHub',
     AUTOMATIC_RECONNECT: true,
     RECONNECT_DELAYS: [0, 2000, 10000, 30000] as number[],
+    // F1 Live Timing API endpoints - configurable via environment
+    NEGOTIATE_URL:
+      process.env.F1_NEGOTIATE_URL ||
+      'https://livetiming.formula1.com/signalr/negotiate',
+    CONNECT_URL:
+      process.env.F1_CONNECT_URL ||
+      'wss://livetiming.formula1.com/signalr/connect',
   },
   MQTT: {
     BROKER_URL: 'mqtt://localhost:1883',
@@ -74,6 +81,9 @@ const config: AppConfig = {
     }),
     automaticReconnect: DEFAULT_VALUES.SIGNALR.AUTOMATIC_RECONNECT,
     reconnectDelays: DEFAULT_VALUES.SIGNALR.RECONNECT_DELAYS,
+    // F1 Live Timing API endpoints - configurable for development
+    negotiateUrl: DEFAULT_VALUES.SIGNALR.NEGOTIATE_URL,
+    connectUrl: DEFAULT_VALUES.SIGNALR.CONNECT_URL,
   },
   mqtt: {
     brokerUrl: process.env.MQTT_BROKER_URL || DEFAULT_VALUES.MQTT.BROKER_URL,

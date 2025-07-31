@@ -8,6 +8,9 @@ export interface SignalRConfig {
   accessToken?: string;
   automaticReconnect?: boolean;
   reconnectDelays?: number[];
+  // F1 Live Timing API endpoints
+  negotiateUrl?: string;
+  connectUrl?: string;
 }
 
 export interface MqttConfig {

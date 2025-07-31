@@ -96,14 +96,19 @@ case "${1:-help}" in
     "switch-dev")
         print_status "Switching main application to development mode..."
         node switch-environment.js development
-        print_success "Switched to development environment"
+        print_success "Switched to development environment (using .env files)"
         print_warning "Remember to start the mock server!"
         ;;
     
     "switch-prod")
         print_status "Switching main application to production mode..."
         node switch-environment.js production
-        print_success "Switched to production environment"
+        print_success "Switched to production environment (using .env files)"
+        ;;
+    
+    "env-status")
+        print_status "Checking environment configuration..."
+        node switch-environment.js status
         ;;
     
     "test")
@@ -149,8 +154,9 @@ case "${1:-help}" in
         echo "  status           - Check service status"
         echo ""
         echo "Environment Switching:"
-        echo "  switch-dev       - Switch main app to development (mock server)"
-        echo "  switch-prod      - Switch main app to production (real F1 API)"
+        echo "  switch-dev       - Switch main app to development (.env method)"
+        echo "  switch-prod      - Switch main app to production (.env method)"
+        echo "  env-status       - Show current environment configuration"
         echo ""
         echo "Testing:"
         echo "  test             - Run basic connectivity tests"

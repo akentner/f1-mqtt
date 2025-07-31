@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import https from 'https';
 import { SignalRConfig, F1Event } from '../types';
 import { logger } from '../utils/logger';
+import config from '../config';
 
 /**
  * F1 Live Timing Stream Types
@@ -109,9 +110,13 @@ const SIGNALR_DEFAULTS = {
   PARSE_ERROR_PREVIEW_SIZE: 200,
   LARGE_PAYLOAD_THRESHOLD: 500,
 
-  // F1 Live Timing API endpoints
-  NEGOTIATE_URL: 'https://livetiming.formula1.com/signalr/negotiate',
-  CONNECT_URL: 'wss://livetiming.formula1.com/signalr/connect',
+  // F1 Live Timing API endpoints (configurable via environment variables)
+  NEGOTIATE_URL:
+    config.signalR.negotiateUrl ||
+    'https://livetiming.formula1.com/signalr/negotiate',
+  CONNECT_URL:
+    config.signalR.connectUrl ||
+    'wss://livetiming.formula1.com/signalr/connect',
   HUB_DATA: '[{"name":"Streaming"}]',
 
   // F1 Stream Configuration

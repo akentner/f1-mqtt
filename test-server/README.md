@@ -45,23 +45,37 @@ The server will start on port 3001 by default.
 
 ## Usage with F1 MQTT Bridge
 
-To use this mock server with the main F1 MQTT Bridge application, update your environment variables:
+To use this mock server with the main F1 MQTT Bridge application, use the environment switcher:
 
 ```bash
-# In your main application .env file
-SIGNALR_NEGOTIATE_URL=http://localhost:3001/signalr/negotiate
-SIGNALR_CONNECT_URL=ws://localhost:3001/signalr/connect
+# Switch to development mode (uses .env files, no source code changes)
+./setup.sh switch-dev
+
+# Or manually copy the development environment
+cp ../.env.development ../.env
+
+# Switch back to production
+./setup.sh switch-prod
 ```
 
-Or update the SIGNALR_DEFAULTS in your SignalR client:
+### Environment Configuration
 
-```typescript
-const SIGNALR_DEFAULTS = {
-  // ... other settings
-  NEGOTIATE_URL: 'http://localhost:3001/signalr/negotiate',
-  CONNECT_URL: 'ws://localhost:3001/signalr/connect',
-  // ... other settings
-};
+The application now uses `.env` files for configuration instead of modifying source code:
+
+- `.env.development` - Development configuration (mock server)
+- `.env.production` - Production configuration (real F1 API)
+- `.env` - Active configuration (auto-generated)
+
+Key environment variables:
+
+```bash
+# F1 API endpoints
+F1_NEGOTIATE_URL=http://localhost:3001/signalr/negotiate
+F1_CONNECT_URL=ws://localhost:3001/signalr/connect
+
+# Development settings
+NODE_ENV=development
+LOG_LEVEL=debug
 ```
 
 ## Mock Data
@@ -105,16 +119,20 @@ curl http://localhost:3001/health
 ## Integration Example
 
 ```typescript
-// Use mock server in development
-const isDevelopment = process.env.NODE_ENV === 'development';
+// Environment-based configuration (recommended)
+import config from './src/config';
 
 const signalRConfig = {
+  negotiateUrl: config.signalR.negotiateUrl, // From .env: F1_NEGOTIATE_URL
+  connectUrl: config.signalR.connectUrl, // From .env: F1_CONNECT_URL
+};
+
+// Legacy approach (still works)
+const isDevelopment = process.env.NODE_ENV === 'development';
+const legacyConfig = {
   negotiateUrl: isDevelopment
     ? 'http://localhost:3001/signalr/negotiate'
     : 'https://livetiming.formula1.com/signalr/negotiate',
-  connectUrl: isDevelopment
-    ? 'ws://localhost:3001/signalr/connect'
-    : 'wss://livetiming.formula1.com/signalr/connect',
 };
 ```
 
