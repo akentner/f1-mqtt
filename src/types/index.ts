@@ -34,6 +34,15 @@ export interface MqttConfig {
   birthMessage?: string;
   willTopic?: string;
   willMessage?: string;
+  // Topic-specific retain configuration
+  retainedTopics?: TopicRetainConfig[];
+}
+
+// Configuration for topic-specific retain behavior
+export interface TopicRetainConfig {
+  pattern: string; // Topic pattern (supports wildcards: *, **)
+  retain: boolean; // Whether to retain messages for this pattern
+  description?: string; // Optional description for documentation
 }
 
 export interface AppConfig {

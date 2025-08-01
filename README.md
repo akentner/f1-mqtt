@@ -102,6 +102,32 @@ The `.env.local` file allows you to override any settings for local development 
 
 **Note**: `.env.local` is gitignored and should contain your personal development settings.
 
+### Topic-Specific Retain Configuration
+
+The application supports configurable retain behavior for specific MQTT topics using patterns:
+
+```bash
+# Configure which topics should be retained (JSON format)
+MQTT_RETAINED_TOPICS=[
+  {"pattern": "session_info", "retain": true, "description": "Session information"},
+  {"pattern": "driver_list", "retain": true, "description": "Driver list"},
+  {"pattern": "timing/**", "retain": true, "description": "All timing data"},
+  {"pattern": "car_data", "retain": false, "description": "Car data not retained"},
+  {"pattern": "**/status", "retain": true, "description": "All status topics"}
+]
+```
+
+**Pattern Wildcards:**
+
+- `*` matches any single segment (e.g., `timing/*` matches `timing/lap` but not `timing/lap/sector`)
+- `**` matches any number of segments (e.g., `timing/**` matches `timing/lap/sector/1`)
+- Exact matches are supported (e.g., `session_info` matches only `session_info`)
+
+**Use Cases:**
+
+- **Retained**: Session info, driver lists, track status, weather - data that should persist
+- **Not Retained**: Real-time telemetry, timing data - data that becomes stale quickly
+
 ### Environment Variables
 
 | Variable                    | Description                                     | Default                                   |
@@ -116,6 +142,7 @@ The `.env.local` file allows you to override any settings for local development 
 | `MQTT_TOPIC_PREFIX`         | MQTT Topic Prefix                               | `f1`                                      |
 | `MQTT_QOS`                  | MQTT QoS Level (0-2)                            | `1`                                       |
 | `MQTT_RETAIN`               | MQTT Retain Flag                                | `false`                                   |
+| `MQTT_RETAINED_TOPICS`      | Topic-specific retain config (JSON)             | See below                                 |
 | `LOG_LEVEL`                 | Log Level                                       | `info`                                    |
 | `PORT`                      | HTTP Server Port                                | `3000`                                    |
 | `HA_DISCOVERY_PREFIX`       | HA Discovery Prefix                             | `homeassistant`                           |

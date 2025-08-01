@@ -5,6 +5,27 @@ All notable changes to the F1 MQTT Bridge project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-08-01
+
+### Added
+
+- **Topic-Specific MQTT Retain Configuration**: Configurable retain behavior for specific MQTT topic patterns
+- **Wildcard Pattern Matching**: Support for `*` (single segment) and `**` (multiple segments) in topic patterns
+- **Retain Logic Override**: Topic-specific retain settings override global MQTT retain configuration
+- **Pattern-Based Configuration**: JSON-configurable retain patterns via `MQTT_RETAINED_TOPICS` environment variable
+
+### Enhanced
+
+- **MQTT Publisher**: Enhanced with intelligent retain logic based on topic patterns
+- **Configuration System**: Extended MQTT configuration with `retainedTopics` support
+- **Topic Matching**: Robust pattern matching system for topic-based configuration
+
+### Use Cases
+
+- **Persistent Data**: Session info, driver lists, track status automatically retained
+- **Real-time Data**: Telemetry and timing data not retained to prevent stale data
+- **Home Assistant Integration**: Discovery topics automatically retained for proper integration
+
 ## [1.2.0] - 2025-08-01
 
 ### Added

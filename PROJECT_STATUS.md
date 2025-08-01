@@ -37,6 +37,8 @@ This document tracks the development progress and current capabilities of the F1
 - **Hierarchical Configuration**: `.env` (base) + `.env.local` (overrides)
 - **Local Development**: `.env.local` for personal settings (gitignored)
 - **Override Capability**: Local values automatically override base configuration
+- **Topic-Specific MQTT Retain**: Configurable retain behavior per topic pattern
+- **Pattern Matching**: Wildcard support (`*` single segment, `**` multiple segments)
 - **Type-Safe Validation**: parseSessionRecordingMode with strict validation
 - **Mode-Specific Settings**: Configurable recording modes per environment
 - **Hot Reloading**: Configuration changes without restart

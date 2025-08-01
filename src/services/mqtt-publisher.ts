@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import * as mqtt from 'mqtt';
-import { MqttConfig, MqttMessage } from '../types';
+import { MqttConfig, MqttMessage, TopicRetainConfig } from '../types';
 import { logger } from '../utils/logger';
 
 export class MqttPublisher extends EventEmitter {
@@ -264,16 +264,17 @@ export class MqttPublisher extends EventEmitter {
       data,
     });
 
+    // Determine if this topic should be retained
+    const shouldRetain = this.shouldRetainTopic(topic);
+
     const message: MqttMessage = {
       topic,
       payload,
+      retain: shouldRetain, // Use topic-specific retain logic
     };
 
     if (this.config.qos !== undefined) {
       message.qos = this.config.qos;
-    }
-    if (this.config.retain !== undefined) {
-      message.retain = this.config.retain;
     }
 
     await this.publish(message);
@@ -296,6 +297,57 @@ export class MqttPublisher extends EventEmitter {
   private buildTopic(eventType: string): string {
     const prefix = this.config.topicPrefix || 'f1';
     return `${prefix}/${eventType.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+  }
+
+  /**
+   * Check if a topic should be retained based on configured patterns
+   */
+  private shouldRetainTopic(topic: string): boolean {
+    if (!this.config.retainedTopics) {
+      return this.config.retain ?? false;
+    }
+
+    // Remove topic prefix for pattern matching
+    const prefix = this.config.topicPrefix || 'f1';
+    const topicWithoutPrefix = topic.startsWith(prefix + '/')
+      ? topic.substring(prefix.length + 1)
+      : topic;
+
+    // Check each retained topic pattern
+    for (const retainConfig of this.config.retainedTopics) {
+      if (this.matchesPattern(topicWithoutPrefix, retainConfig.pattern)) {
+        logger.debug('Topic matched retain pattern', {
+          topic: topicWithoutPrefix,
+          pattern: retainConfig.pattern,
+          retain: retainConfig.retain,
+          description: retainConfig.description,
+        });
+        return retainConfig.retain;
+      }
+    }
+
+    // Default to global retain setting if no pattern matches
+    return this.config.retain ?? false;
+  }
+
+  /**
+   * Check if a topic matches a pattern with wildcard support
+   * Supports:
+   * - * matches any single segment (no slashes)
+   * - ** matches any number of segments (including slashes)
+   */
+  private matchesPattern(topic: string, pattern: string): boolean {
+    // Handle exact match first
+    if (pattern === topic) return true;
+
+    // Convert pattern to regex
+    const regexPattern = pattern
+      .replace(/\*\*/g, '__DOUBLE_WILDCARD__') // Temporary placeholder
+      .replace(/\*/g, '[^/]*') // * matches single segment (no slashes)
+      .replace(/__DOUBLE_WILDCARD__/g, '.*'); // ** matches any characters including slashes
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(topic);
   }
 
   async disconnect(): Promise<void> {

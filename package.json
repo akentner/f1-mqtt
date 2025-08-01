@@ -1,7 +1,7 @@
 {
   "name": "f1-mqtt",
   "version": "1.0.0",
-  "description": "F1 SignalR to MQTT Bridge with multi-mode session recording - Streams F1 timing data from SignalR to MQTT for Home Assistant integration with intelligent recording and analysis capabilities",
+  "description": "F1 SignalR to MQTT Bridge with multi-mode session recording and configurable topic retention - Streams F1 timing data from SignalR to MQTT for Home Assistant integration with intelligent recording, analysis capabilities, and topic-specific retain configuration",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
