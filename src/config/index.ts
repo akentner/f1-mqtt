@@ -35,6 +35,20 @@ const DEFAULT_VALUES = {
     ENABLE_FILE: false,
     FILE_PATH: './logs/app.log',
   },
+  SIGNALR_MESSAGE_LOGGING: {
+    ENABLED: false,
+    FILE_PATH: './logs/signalr-messages.log',
+    MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+    MAX_FILES: 10,
+  },
+  SESSION_RECORDING: {
+    ENABLED: false,
+    RECORDING_PATH: './recordings',
+    MAX_RECORDING_SIZE: 100 * 1024 * 1024, // 100MB
+    AUTO_START: false,
+    SESSION_DETECTION_TIMEOUT: 30000, // 30 seconds
+    FILTER_KEEP_ALIVE_MESSAGES: true, // Filter out empty keep-alive messages
+  },
   SERVER: {
     PORT: 3000,
     HEALTH_ENDPOINT: '/health',
@@ -156,6 +170,48 @@ const config: AppConfig = {
       DEFAULT_VALUES.LOGGING.ENABLE_FILE
     ),
     filePath: process.env.LOG_FILE_PATH || DEFAULT_VALUES.LOGGING.FILE_PATH,
+  },
+  signalRMessageLogging: {
+    enabled: parseBooleanWithDefault(
+      process.env.SIGNALR_MESSAGE_LOGGING,
+      DEFAULT_VALUES.SIGNALR_MESSAGE_LOGGING.ENABLED
+    ),
+    filePath:
+      process.env.SIGNALR_LOG_FILE_PATH ||
+      DEFAULT_VALUES.SIGNALR_MESSAGE_LOGGING.FILE_PATH,
+    maxFileSize: parseIntWithDefault(
+      process.env.SIGNALR_LOG_MAX_FILE_SIZE,
+      DEFAULT_VALUES.SIGNALR_MESSAGE_LOGGING.MAX_FILE_SIZE
+    ),
+    maxFiles: parseIntWithDefault(
+      process.env.SIGNALR_LOG_MAX_FILES,
+      DEFAULT_VALUES.SIGNALR_MESSAGE_LOGGING.MAX_FILES
+    ),
+  },
+  sessionRecording: {
+    enabled: parseBooleanWithDefault(
+      process.env.SESSION_RECORDING_ENABLED,
+      DEFAULT_VALUES.SESSION_RECORDING.ENABLED
+    ),
+    recordingPath:
+      process.env.SESSION_RECORDING_PATH ||
+      DEFAULT_VALUES.SESSION_RECORDING.RECORDING_PATH,
+    maxRecordingSize: parseIntWithDefault(
+      process.env.SESSION_RECORDING_MAX_SIZE,
+      DEFAULT_VALUES.SESSION_RECORDING.MAX_RECORDING_SIZE
+    ),
+    autoStart: parseBooleanWithDefault(
+      process.env.SESSION_RECORDING_AUTO_START,
+      DEFAULT_VALUES.SESSION_RECORDING.AUTO_START
+    ),
+    sessionDetectionTimeout: parseIntWithDefault(
+      process.env.SESSION_DETECTION_TIMEOUT,
+      DEFAULT_VALUES.SESSION_RECORDING.SESSION_DETECTION_TIMEOUT
+    ),
+    filterKeepAliveMessages: parseBooleanWithDefault(
+      process.env.SESSION_RECORDING_FILTER_KEEP_ALIVE,
+      DEFAULT_VALUES.SESSION_RECORDING.FILTER_KEEP_ALIVE_MESSAGES
+    ),
   },
   server: {
     port: parseIntWithDefault(process.env.PORT, DEFAULT_VALUES.SERVER.PORT),

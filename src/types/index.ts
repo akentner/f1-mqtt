@@ -42,6 +42,20 @@ export interface AppConfig {
     enableFile?: boolean;
     filePath?: string;
   };
+  signalRMessageLogging: {
+    enabled: boolean;
+    filePath: string;
+    maxFileSize: number;
+    maxFiles: number;
+  };
+  sessionRecording: {
+    enabled: boolean;
+    recordingPath: string;
+    maxRecordingSize: number;
+    autoStart: boolean;
+    sessionDetectionTimeout: number;
+    filterKeepAliveMessages: boolean;
+  };
   server: {
     port: number;
     healthCheckEndpoint: string;

@@ -5,7 +5,9 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "dev": "nodemon index.js"
+        "dev": "nodemon index.js",
+        "replay": "node session-replay-server.js",
+        "replay:dev": "nodemon session-replay-server.js"
     },
     "dependencies": {
         "express": "^4.18.2",

@@ -58,3 +58,6 @@ options.json
 # Temporary files
 *.tmp
 *.temp
+
+# Recordings
+recordings/

@@ -33,7 +33,8 @@ cd test-server
 # Switch environments (copies .env files, no source changes)
 node switch-environment.js dev     # → Development mode
 node switch-environment.js prod    # → Production mode
-node switch-environment.js status  # → Show current config
+
+  # → Show current config
 ```
 
 ## 🚀 Quick Start
@@ -117,6 +118,7 @@ services:
 - **MQTT Topic**: `f1/dev` (isolated from production)
 - **Memory**: GC enabled, lower limits for development
 - **Node**: Development mode, auto-reload support
+- **Session Recording**: Enabled with keep-alive filtering
 
 ### Production Environment
 
@@ -126,5 +128,18 @@ services:
 - **Memory**: Optimized limits, production GC settings
 - **Node**: Production mode, performance optimizations
 - **Home Assistant**: Discovery enabled
+- **Session Recording**: Configurable via environment variables
+
+### Session Recording Variables
+
+```bash
+# Session Recording Configuration
+SESSION_RECORDING_ENABLED=true
+SESSION_RECORDING_PATH=./recordings
+SESSION_RECORDING_MAX_SIZE=104857600
+SESSION_RECORDING_AUTO_START=true
+SESSION_DETECTION_TIMEOUT=30000
+SESSION_RECORDING_FILTER_KEEP_ALIVE=true  # Filter out keep-alive messages
+```
 
 This solution provides professional environment management without the risks of source code modification! 🎉

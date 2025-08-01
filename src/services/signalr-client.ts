@@ -1,9 +1,17 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import https from 'https';
+import http from 'http';
 import { SignalRConfig, F1Event } from '../types';
 import { logger } from '../utils/logger';
-import config from '../config';
+import globalConfig from '../config';
+import {
+  SignalRMessageLogger,
+} from './signalr-message-logger';
+import {
+  SessionRecorder,
+  SessionRecording,
+} from './session-recorder';
 
 /**
  * F1 Live Timing Stream Types
@@ -46,23 +54,29 @@ export enum F1Stream {
  */
 export const F1_STREAM_SETS = {
   // Minimal set for basic race monitoring
-  BASIC: [F1Stream.RACE_CONTROL_MESSAGES, F1Stream.TRACK_STATUS],
+  BASIC: [
+    F1Stream.RACE_CONTROL_MESSAGES,
+    F1Stream.TRACK_STATUS,
+    F1Stream.SESSION_DATA,
+    F1Stream.SESSION_INFO,
+  ],
 
   // Essential race data
   ESSENTIAL: [
     F1Stream.RACE_CONTROL_MESSAGES,
     F1Stream.TRACK_STATUS,
-    F1Stream.TIMING_DATA,
-    F1Stream.POSITION,
+    // F1Stream.TIMING_DATA,
+    // F1Stream.POSITION,
+    F1Stream.SESSION_DATA,
     F1Stream.SESSION_INFO,
   ],
 
-  // Full data set (currently used)
+  // Full data set
   FULL: [
     F1Stream.RACE_CONTROL_MESSAGES,
     F1Stream.TIMING_DATA,
-    F1Stream.CAR_DATA,
-    F1Stream.POSITION,
+    // F1Stream.CAR_DATA,
+    // F1Stream.POSITION,
     F1Stream.EXTRAPOLATED_CLOCK,
     F1Stream.TOP_THREE,
     F1Stream.RCM_SERIES,
@@ -112,10 +126,10 @@ const SIGNALR_DEFAULTS = {
 
   // F1 Live Timing API endpoints (configurable via environment variables)
   NEGOTIATE_URL:
-    config.signalR.negotiateUrl ||
+    globalConfig.signalR.negotiateUrl ||
     'https://livetiming.formula1.com/signalr/negotiate',
   CONNECT_URL:
-    config.signalR.connectUrl ||
+    globalConfig.signalR.connectUrl ||
     'wss://livetiming.formula1.com/signalr/connect',
   HUB_DATA: '[{"name":"Streaming"}]',
 
@@ -156,6 +170,8 @@ export class SignalRClient extends EventEmitter {
   private readonly MAX_BUFFER_SIZE = SIGNALR_DEFAULTS.MAX_BUFFER_SIZE;
   private currentStreamSet: readonly string[] =
     SIGNALR_DEFAULTS.DEFAULT_STREAM_SET;
+  private messageLogger: SignalRMessageLogger;
+  private sessionRecorder: SessionRecorder;
 
   // F1 Live Timing API endpoints
   private readonly NEGOTIATE_URL = SIGNALR_DEFAULTS.NEGOTIATE_URL;
@@ -165,6 +181,28 @@ export class SignalRClient extends EventEmitter {
   constructor(config: SignalRConfig) {
     super();
     this.config = config;
+
+    // Initialize message logger with global configuration
+    this.messageLogger = new SignalRMessageLogger({
+      enabled: globalConfig.signalRMessageLogging.enabled,
+      logFilePath: globalConfig.signalRMessageLogging.filePath,
+      maxFileSize: globalConfig.signalRMessageLogging.maxFileSize,
+      maxFiles: globalConfig.signalRMessageLogging.maxFiles,
+    });
+
+    // Initialize session recorder
+    this.sessionRecorder = new SessionRecorder({
+      enabled: globalConfig.sessionRecording?.enabled ?? false,
+      recordingPath:
+        globalConfig.sessionRecording?.recordingPath ?? './recordings',
+      maxRecordingSize:
+        globalConfig.sessionRecording?.maxRecordingSize ?? 100 * 1024 * 1024, // 100MB
+      autoStart: globalConfig.sessionRecording?.autoStart ?? false,
+      sessionDetectionTimeout:
+        globalConfig.sessionRecording?.sessionDetectionTimeout ?? 30000,
+      filterKeepAliveMessages:
+        globalConfig.sessionRecording?.filterKeepAliveMessages ?? true,
+    });
 
     // Prevent memory leaks from EventEmitter
     this.setMaxListeners(SIGNALR_DEFAULTS.MAX_EVENT_LISTENERS);
@@ -266,7 +304,11 @@ export class SignalRClient extends EventEmitter {
 
       const url = `${this.NEGOTIATE_URL}?${params.toString()}`;
 
-      const req = https.get(
+      // Choose the correct client based on protocol
+      const isHttps = url.startsWith('https:');
+      const client = isHttps ? https : http;
+
+      const req = client.get(
         url,
         {
           headers: {
@@ -420,6 +462,8 @@ export class SignalRClient extends EventEmitter {
 
   private handleMessage(data: string): void {
     try {
+      const timestamp = new Date().toISOString();
+
       // Add to message buffer for debugging (with size limit)
       this.messageBuffer.push(data);
       if (this.messageBuffer.length > this.MAX_BUFFER_SIZE) {
@@ -431,26 +475,76 @@ export class SignalRClient extends EventEmitter {
         data.length > SIGNALR_DEFAULTS.MESSAGE_TRUNCATE_SIZE
           ? data.substring(0, SIGNALR_DEFAULTS.MESSAGE_TRUNCATE_SIZE) + '...'
           : data;
+
       logger.debug('📨 RAW SignalR Message', {
         rawData: truncatedData,
         dataLength: data.length,
-        timestamp: new Date().toISOString(),
+        timestamp,
       });
 
       // Parse with error boundary to prevent memory leaks from malformed JSON
       let payload: Record<string, unknown>;
+      let parseError: string | undefined;
+
       try {
         payload = JSON.parse(data) as Record<string, unknown>;
-      } catch (parseError) {
+      } catch (error) {
+        parseError = (error as Error).message;
         logger.warn('Failed to parse SignalR message', {
-          error: (parseError as Error).message,
+          error: parseError,
           dataPreview: data.substring(
             0,
             SIGNALR_DEFAULTS.PARSE_ERROR_PREVIEW_SIZE
           ),
         });
+
+        // Log unparseable message
+        this.messageLogger.logMessage({
+          timestamp,
+          direction: 'incoming',
+          messageType: 'PARSE_ERROR',
+          dataLength: data.length,
+          rawMessage: data,
+          parseError,
+          connectionState: this.getConnectionState() || undefined,
+        });
+
         return;
       }
+
+      // Determine message type
+      let messageType = 'UNKNOWN';
+      if (payload.M && Array.isArray(payload.M)) {
+        messageType = 'HUB_MESSAGE';
+      } else if (payload.R) {
+        messageType = 'RESPONSE_MESSAGE';
+      } else if (payload.C) {
+        messageType = 'CONNECTION_MESSAGE';
+      } else if (payload.S) {
+        messageType = 'STATE_MESSAGE';
+      } else if (payload.I) {
+        messageType = 'IDENTIFIER_MESSAGE';
+      }
+
+      // Log message to file
+      this.messageLogger.logMessage({
+        timestamp,
+        direction: 'incoming',
+        messageType,
+        dataLength: data.length,
+        rawMessage: data,
+        parsedMessage: payload,
+        connectionState: this.getConnectionState() || undefined,
+      });
+
+      // Record message for session recording
+      this.sessionRecorder.recordMessage(
+        data,
+        'incoming',
+        messageType,
+        payload,
+        this.extractStreamNameFromPayload(payload, messageType)
+      );
 
       // Log parsed payload structure (with size limits)
       logger.debug('📋 Parsed SignalR Payload', {
@@ -504,6 +598,26 @@ export class SignalRClient extends EventEmitter {
               ? JSON.stringify(payload.R, null, 2)
               : '[Large response omitted]',
         });
+
+        // Auto-start session recording if enabled and SessionInfo is received
+        const responseObj = payload.R as Record<string, unknown>;
+        if (
+          globalConfig.sessionRecording.autoStart &&
+          responseObj.SessionInfo &&
+          !this.sessionRecorder.isCurrentlyRecording()
+        ) {
+          const sessionInfo = responseObj.SessionInfo as Record<
+            string,
+            unknown
+          >;
+          this.sessionRecorder.startRecording({
+            sessionType: sessionInfo.Type as string,
+            sessionName: sessionInfo.Name as string,
+            location: (sessionInfo.Meeting as Record<string, unknown>)
+              ?.Location as string,
+          });
+        }
+
         this.processResponseMessage(payload.R as Record<string, unknown>);
       }
 
@@ -717,5 +831,93 @@ export class SignalRClient extends EventEmitter {
    */
   getAvailableStreams(): typeof F1Stream {
     return F1Stream;
+  }
+
+  /**
+   * Start session recording manually
+   */
+  startSessionRecording(sessionInfo?: {
+    sessionType?: string;
+    sessionName?: string;
+    location?: string;
+  }): void {
+    this.sessionRecorder.startRecording(sessionInfo);
+  }
+
+  /**
+   * Stop session recording manually
+   */
+  stopSessionRecording(): SessionRecording | null {
+    return this.sessionRecorder.stopRecording();
+  }
+
+  /**
+   * Check if session recording is active
+   */
+  isRecordingSession(): boolean {
+    return this.sessionRecorder.isCurrentlyRecording();
+  }
+
+  /**
+   * Get current session recording metadata
+   */
+  getCurrentSessionMetadata(): SessionRecording['metadata'] | null {
+    return this.sessionRecorder.getCurrentSessionMetadata();
+  }
+
+  /**
+   * List available session recordings
+   */
+  listSessionRecordings(): string[] {
+    return this.sessionRecorder.listRecordings();
+  }
+
+  /**
+   * Load a session recording
+   */
+  loadSessionRecording(filename: string): SessionRecording | null {
+    return this.sessionRecorder.loadRecording(filename);
+  }
+
+  private extractStreamNameFromPayload(
+    payload: Record<string, unknown>,
+    messageType: string
+  ): string | undefined {
+    // Extract stream name for hub messages
+    if (
+      messageType === 'HUB_MESSAGE' &&
+      payload.M &&
+      Array.isArray(payload.M)
+    ) {
+      for (const hubMsg of payload.M) {
+        if (typeof hubMsg === 'object' && hubMsg !== null) {
+          const msg = hubMsg as Record<string, unknown>;
+          if (
+            msg.M === 'feed' &&
+            msg.A &&
+            Array.isArray(msg.A) &&
+            msg.A.length > 0
+          ) {
+            return msg.A[0] as string;
+          }
+        }
+      }
+    }
+
+    // Extract stream name for response messages
+    if (
+      messageType === 'RESPONSE_MESSAGE' &&
+      payload.R &&
+      typeof payload.R === 'object'
+    ) {
+      const responseKeys = Object.keys(payload.R);
+      if (responseKeys.length === 1) {
+        return responseKeys[0];
+      } else if (responseKeys.length > 1) {
+        return responseKeys.join(',');
+      }
+    }
+
+    return undefined;
   }
 }
