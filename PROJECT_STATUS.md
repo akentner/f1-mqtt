@@ -30,10 +30,11 @@ This document tracks the development progress and current capabilities of the F1
 - **Batch Processing**: Analyze multiple recordings at once
 
 ### ⚙️ Configuration System
-- **Environment-Based**: Clean .env configuration for dev/prod environments
+- **Hierarchical Configuration**: `.env` (base) + `.env.local` (overrides)
+- **Local Development**: `.env.local` for personal settings (gitignored)
+- **Override Capability**: Local values automatically override base configuration
 - **Type-Safe Validation**: parseSessionRecordingMode with strict validation
-- **Mode-Specific Settings**: Development (hybrid) vs Production (raw)
-- **Backwards Compatible**: Existing recordings remain functional
+- **Mode-Specific Settings**: Configurable recording modes per environment
 - **Hot Reloading**: Configuration changes without restart
 
 ### 📚 Documentation Overhaul

@@ -5,6 +5,21 @@ All notable changes to the F1 MQTT Bridge project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-01
+
+### Added
+- **Hierarchical Environment Configuration**: Added `.env.local` support for local development overrides
+- **Override Functionality**: `.env.local` values automatically override `.env` base configuration
+- **Local Development Workflow**: `.env.local.example` template for easy setup
+- **Configuration Documentation**: Updated README with hierarchical configuration setup guide
+
+### Changed
+- **Environment Loading**: Enhanced env-loader to support override mode for local configurations
+- **Configuration Management**: Improved separation between base configuration and local overrides
+
+### Fixed
+- **Environment Variable Loading**: Proper override behavior for local development settings
+
 ## [1.1.0] - 2025-08-01
 
 ### 🎯 Major Features Added

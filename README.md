@@ -68,6 +68,38 @@ npm run docker:stop
 
 ## ⚙️ Configuration
 
+The application uses a hierarchical environment configuration system:
+
+1. **`.env`** - Base configuration (committed to git)
+2. **`.env.local`** - Local overrides (gitignored, not committed)
+
+The `.env.local` file allows you to override any settings for local development without modifying committed files.
+
+### Setting up Local Configuration
+
+1. Copy the example file:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+2. Edit `.env.local` to override any values from `.env`:
+   ```bash
+   # Example: Override MQTT broker for local development
+   MQTT_BROKER_URL=mqtt://192.168.1.100:1883
+   MQTT_TOPIC_PREFIX=f1_dev
+   
+   # Example: Enable debug features
+   LOG_LEVEL=debug
+   SESSION_RECORDING_ENABLED=true
+   SESSION_RECORDING_MODE=hybrid
+   ```
+
+3. The application will automatically load both files:
+   - `.env` provides base configuration
+   - `.env.local` overrides specific values
+
+**Note**: `.env.local` is gitignored and should contain your personal development settings.
+
 ### Environment Variables
 
 | Variable               | Description           | Default                                   |

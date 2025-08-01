@@ -1,5 +1,5 @@
-// Load environment variables from .env file
-import 'dotenv/config';
+// Load environment variables with .env.local support
+import './config/env-loader';
 
 import { SignalRClient } from './services/signalr-client';
 import { MqttPublisher } from './services/mqtt-publisher';
