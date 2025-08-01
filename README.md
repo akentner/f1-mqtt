@@ -244,7 +244,6 @@ The provided `docker-compose.yml` starts:
 - [ ] **Advanced Filtering** - Configurable event filters
 - [ ] **Database Integration** - Historical data storage
 - [ ] **Alerting** - Notifications for critical events
-- [ ] **Multi-Tenant** - Support for multiple F1 sessions
 - [ ] **WebSocket API** - Real-time data for GUI
 
 ## 📝 Best Practices

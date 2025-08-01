@@ -135,11 +135,33 @@ services:
 ```bash
 # Session Recording Configuration
 SESSION_RECORDING_ENABLED=true
+SESSION_RECORDING_MODE=hybrid              # disabled|raw|structured|hybrid
 SESSION_RECORDING_PATH=./recordings
 SESSION_RECORDING_MAX_SIZE=104857600
 SESSION_RECORDING_AUTO_START=true
 SESSION_DETECTION_TIMEOUT=30000
 SESSION_RECORDING_FILTER_KEEP_ALIVE=true  # Filter out keep-alive messages
+```
+
+#### Recording Modes
+
+- **`disabled`**: No recording (minimal overhead)
+- **`raw`**: Raw messages only (~70% smaller files)
+- **`structured`**: Full structured data with metadata
+- **`hybrid`**: Smart mode - structured for important messages, raw for others
+
+#### Recommended Settings
+
+**Development:**
+```bash
+SESSION_RECORDING_MODE=hybrid
+SESSION_RECORDING_FILTER_KEEP_ALIVE=true
+```
+
+**Production:**
+```bash
+SESSION_RECORDING_MODE=raw
+SESSION_RECORDING_FILTER_KEEP_ALIVE=false
 ```
 
 This solution provides professional environment management without the risks of source code modification! 🎉

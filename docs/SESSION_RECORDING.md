@@ -1,89 +1,101 @@
 # F1 Session Recording & Replay System
 
-Ein umfassendes System zur Aufzeichnung und Wiedergabe von F1 Live Timing Sessions für Entwicklung, Testing und Analyse.
+A comprehensive system for recording and replaying F1 Live Timing Sessions for development, testing, and analysis.
 
-## Übersicht
+## Overview
 
-Das Session Recording System ermöglicht es:
+The Session Recording System enables:
 
-- **Echte F1 Sessions aufzuzeichnen** während sie live laufen
-- **Aufgezeichnete Sessions wiederzugeben** für Development und Testing
-- **Realistische Testdaten** für die Entwicklung zu verwenden
-- **Session-Analysen** durchzuführen ohne auf Live-Events angewiesen zu sein
+- **Recording real F1 sessions** while they run live
+- **Replaying recorded sessions** for development and testing
+- **Using realistic test data** for development
+- **Performing session analysis** without depending on live events
 
-## System-Komponenten
+## System Components
 
 ### 1. SessionRecorder (src/services/session-recorder.ts)
 
-- Zeichnet alle SignalR-Nachrichten einer Session auf
-- Speichert Metadaten (Session-Type, Location, Duration, etc.)
-- Automatische Session-Erkennung über SessionInfo-Messages
-- Datei-Rotation und Größenlimits
+- Records all SignalR messages of a session
+- Stores metadata (Session-Type, Location, Duration, etc.)
+- Automatic session detection via SessionInfo messages
+- File rotation and size limits
 
 ### 2. Session Replay Server (test-server/session-replay-server.js)
 
-- Spielt aufgezeichnete Sessions über WebSocket wieder ab
-- Web-basierte Control Panel für einfache Bedienung
-- Variable Playback-Geschwindigkeit (0.5x - 2x)
-- Loop-Funktion für kontinuierliche Tests
+- Replays recorded sessions via WebSocket
+- Web-based control panel for easy operation
+- Variable playback speed (0.5x - 2x)
+- Loop function for continuous testing
 
 ### 3. Integration in SignalR Client
 
-- Automatische Recording-Integration
-- API für manuelles Recording-Management
-- Nahtlose Kompatibilität mit bestehender Funktionalität
+- Automatic recording integration
+- API for manual recording management
+- Seamless compatibility with existing functionality
 
-## Konfiguration
+## Configuration
 
-### Umgebungsvariablen
+### Environment Variables
 
 ```bash
-# Session Recording aktivieren
+# Enable session recording
 SESSION_RECORDING_ENABLED=true
 
-# Pfad für Recording-Dateien
+# Recording mode selection
+SESSION_RECORDING_MODE=hybrid              # disabled|raw|structured|hybrid
+
+# Path for recording files
 SESSION_RECORDING_PATH=./recordings
 
-# Maximale Recording-Größe (100MB = 104857600 Bytes)
+# Maximum recording size (100MB = 104857600 Bytes)
 SESSION_RECORDING_MAX_SIZE=104857600
 
-# Automatisches Recording bei SessionInfo
+# Automatic recording on SessionInfo
 SESSION_RECORDING_AUTO_START=true
 
-# Timeout für Session-Erkennung (30 Sekunden)
+# Timeout for session detection (30 seconds)
 SESSION_DETECTION_TIMEOUT=30000
 
-# Keep-Alive Nachrichten filtern (empfohlen für saubere Recordings)
+# Filter keep-alive messages (recommended for clean recordings)
 SESSION_RECORDING_FILTER_KEEP_ALIVE=true
 ```
 
-> **📝 Note**: Die `SESSION_RECORDING_FILTER_KEEP_ALIVE` Option entfernt automatisch SignalR Keep-Alive Nachrichten (leere `{}` Messages und `UNKNOWN` Typen) aus den Recordings. Dies reduziert die Dateigröße erheblich und macht die Recordings sauberer für die Entwicklung.
+### Recording Modes
 
-### Entwicklungsumgebung (.env.development)
+- **`disabled`**: No recording (minimal overhead)
+- **`raw`**: Raw messages only (~70% smaller files)
+- **`structured`**: Full structured data with metadata
+- **`hybrid`**: Smart mode - structured for important messages, raw for others
 
-```bash
-SESSION_RECORDING_ENABLED=true
-SESSION_RECORDING_PATH=./recordings
-SESSION_RECORDING_MAX_SIZE=104857600  # 100MB
-SESSION_RECORDING_AUTO_START=true
-SESSION_DETECTION_TIMEOUT=30000       # 30s
-SESSION_RECORDING_FILTER_KEEP_ALIVE=true  # Empfohlen für Development
-```
+> **📝 Note**: The `SESSION_RECORDING_FILTER_KEEP_ALIVE` option automatically removes SignalR keep-alive messages (empty `{}` messages and `UNKNOWN` types) from recordings. This significantly reduces file size and makes recordings cleaner for development.
 
-### Produktionsumgebung (.env.production)
+### Development Environment (.env.development)
 
 ```bash
 SESSION_RECORDING_ENABLED=true
+SESSION_RECORDING_MODE=hybrid             # Balanced efficiency
 SESSION_RECORDING_PATH=./recordings
-SESSION_RECORDING_MAX_SIZE=209715200  # 200MB
+SESSION_RECORDING_MAX_SIZE=104857600      # 100MB
 SESSION_RECORDING_AUTO_START=true
-SESSION_DETECTION_TIMEOUT=30000       # 30s
-SESSION_RECORDING_FILTER_KEEP_ALIVE=false # Optional für vollständige Logs
+SESSION_DETECTION_TIMEOUT=30000           # 30s
+SESSION_RECORDING_FILTER_KEEP_ALIVE=true  # Recommended for development
 ```
 
-## Recording-Format
+### Production Environment (.env.production)
 
-### Session-Datei-Struktur
+```bash
+SESSION_RECORDING_ENABLED=true
+SESSION_RECORDING_MODE=raw                # Maximum efficiency
+SESSION_RECORDING_PATH=./recordings
+SESSION_RECORDING_MAX_SIZE=209715200      # 200MB
+SESSION_RECORDING_AUTO_START=true
+SESSION_DETECTION_TIMEOUT=30000           # 30s
+SESSION_RECORDING_FILTER_KEEP_ALIVE=false # Optional for complete logs
+```
+
+## Recording Format
+
+### Session File Structure
 
 ```json
 {
@@ -96,6 +108,7 @@ SESSION_RECORDING_FILTER_KEEP_ALIVE=false # Optional für vollständige Logs
     "endTime": "2025-08-01T16:30:00.000Z",
     "duration": 9000000,
     "recordingVersion": "1.0",
+    "recordingMode": "hybrid",
     "messageCount": 15420,
     "totalSize": 5242880
   },
@@ -114,51 +127,51 @@ SESSION_RECORDING_FILTER_KEEP_ALIVE=false # Optional für vollständige Logs
 }
 ```
 
-### Message-Eigenschaften
+### Message Properties
 
-- **timestamp**: Absolute Zeit der Nachricht
-- **relativeTime**: Millisekunden seit Session-Start
-- **messageType**: Art der SignalR-Nachricht
+- **timestamp**: Absolute time of the message
+- **relativeTime**: Milliseconds since session start
+- **messageType**: Type of SignalR message
 - **direction**: incoming/outgoing
-- **rawMessage**: Original JSON-String
-- **parsedMessage**: Geparste JSON-Struktur
-- **streamName**: F1-Stream-Name (falls verfügbar)
-- **dataSize**: Nachrichtengröße in Bytes
+- **rawMessage**: Original JSON string
+- **parsedMessage**: Parsed JSON structure
+- **streamName**: F1 stream name (if available)
+- **dataSize**: Message size in bytes
 
-## Verwendung
+## Usage
 
 ### 1. Session Recording
 
-#### Automatisches Recording
+#### Automatic Recording
 
 ```typescript
-// .env konfigurieren
+// Configure .env
 SESSION_RECORDING_ENABLED = true;
 SESSION_RECORDING_AUTO_START = true;
 
-// Recording startet automatisch bei SessionInfo-Message
-// Keine weitere Konfiguration nötig
+// Recording starts automatically on SessionInfo message
+// No further configuration needed
 ```
 
-#### Manuelles Recording
+#### Manual Recording
 
 ```typescript
 import { SignalRClient } from './services/signalr-client';
 
 const client = new SignalRClient(config);
 
-// Recording manuell starten
+// Start recording manually
 client.startSessionRecording({
   sessionType: 'Practice',
   sessionName: 'Austrian GP - FP1',
   location: 'Red Bull Ring',
 });
 
-// Recording stoppen und Session-Datei speichern
+// Stop recording and save session file
 const recording = client.stopSessionRecording();
 console.log(`Recording saved: ${recording?.metadata.sessionId}`);
 
-// Status prüfen
+// Check status
 if (client.isRecordingSession()) {
   const metadata = client.getCurrentSessionMetadata();
   console.log(`Recording: ${metadata?.sessionName}`);
@@ -167,16 +180,16 @@ if (client.isRecordingSession()) {
 
 ### 2. Session Replay
 
-#### Replay Server starten
+#### Start Replay Server
 
 ```bash
-# Im test-server Verzeichnis
+# In test-server directory
 cd test-server
 
-# Session Replay Server starten
+# Start session replay server
 npm run replay
 
-# Oder mit Auto-Reload
+# Or with auto-reload
 npm run replay:dev
 ```
 
@@ -186,151 +199,154 @@ npm run replay:dev
 http://localhost:3002/control
 ```
 
-Das Control Panel bietet:
+The Control Panel offers:
 
-- **📁 Liste aller Recordings** mit Metadaten
-- **▶️ Playback-Steuerung** (1x, 2x, 0.5x Speed)
-- **🔄 Loop-Funktion** für kontinuierliche Tests
-- **📊 Replay-Status** in Echtzeit
+- **📁 List of all recordings** with metadata
+- **▶️ Playback controls** (1x, 2x, 0.5x Speed)
+- **🔄 Loop function** for continuous testing
+- **📊 Real-time replay status**
 
-#### API-Endpunkte
+#### API Endpoints
 
 ```bash
-# Alle Recordings auflisten
+# List all recordings
 GET http://localhost:3002/recordings
 
-# Recording-Details abrufen
+# Get recording details
 GET http://localhost:3002/recordings/{filename}
 
-# Replay starten
+# Start replay
 POST http://localhost:3002/replay/{filename}
 Body: { "speed": 1.0, "loop": false }
 
-# Replay stoppen
+# Stop replay
 POST http://localhost:3002/replay/stop
 
-# Replay-Status
+# Replay status
 GET http://localhost:3002/replay/status
 
-# Health Check
+# Health check
 GET http://localhost:3002/health
 ```
 
 ### 3. Development Workflow
 
-#### Echte Session aufzeichnen
+#### Record Real Session
 
 ```bash
-# 1. Production-Config verwenden
+# 1. Use production config
 cp .env.production .env
 
-# 2. F1 MQTT Bridge starten (mit echter F1 API)
+# 2. Start F1 MQTT Bridge (with real F1 API)
 npm run dev:watch
 
-# 3. Session läuft automatisch auf - Recording startet bei SessionInfo
-# 4. Nach Session: Recording wird automatisch gespeichert
+# 3. Session runs automatically - recording starts on SessionInfo
+# 4. After session: Recording is automatically saved
 ```
 
-#### Recording für Tests verwenden
+#### Use Recording for Tests
 
 ```bash
-# 1. Development-Config verwenden
+# 1. Use development config
 cp .env.development .env
 
-# 2. Replay Server starten
+# 2. Start replay server
 cd test-server && npm run replay
 
-# 3. F1 MQTT Bridge auf Mock Server umstellen
+# 3. Switch F1 MQTT Bridge to mock server
 # F1_NEGOTIATE_URL=http://localhost:3001/signalr/negotiate
 # F1_CONNECT_URL=ws://localhost:3001/signalr/connect
 
-# 4. Recording über Control Panel abspielen
+# 4. Play recording via control panel
 # http://localhost:3002/control
 
-# 5. F1 MQTT Bridge empfängt replayed Daten
+# 5. F1 MQTT Bridge receives replayed data
 npm run dev:watch
 ```
 
-## Recording-Management
+## Recording Management
 
-### Recording-Dateien finden
+### Find Recording Files
 
 ```bash
-# Standard-Pfad
+# Standard path
 ls -la ./recordings/
 
-# Recordings nach Datum sortiert
+# Recordings sorted by date
 ls -lt ./recordings/*.json
 
-# Recording-Informationen anzeigen
+# Show recording information
 jq '.metadata' ./recordings/session_*.json
 ```
 
-### Recording-Größe optimieren
+### Optimize Recording Size
 
 ```bash
-# Nur wichtige Streams aufzeichnen
-# In .env: Verwende ESSENTIAL statt FULL stream set
+# Record only important streams
+# In .env: Use ESSENTIAL instead of FULL stream set
 
-# Recording-Größe überwachen
+# Monitor recording size
 du -h ./recordings/
 
-# Alte Recordings löschen
+# Delete old recordings
 find ./recordings -name "*.json" -mtime +30 -delete
 ```
 
-### Recordings konvertieren
+### Convert Recordings
 
 ```bash
-# Messages nach Stream-Type filtern
+# Filter messages by stream type
 jq '.messages[] | select(.streamName == "TimingData")' recording.json
 
-# Recording-Statistiken
+# Recording statistics
 jq '.metadata | {sessionName, duration, messageCount, totalSize}' recording.json
 
-# Message-Types zählen
+# Count message types
 jq '.messages | group_by(.messageType) | map({type: .[0].messageType, count: length})' recording.json
+
+# Convert between recording modes
+npm run recording:convert input.json output.json raw
 ```
 
-## Erweiterte Features
+## Advanced Features
 
-### Custom Playback-Speed
+### Custom Playback Speed
 
 ```javascript
-// 2x Geschwindigkeit für schnelle Tests
+// 2x speed for fast testing
 fetch('/replay/session.json', {
   method: 'POST',
   body: JSON.stringify({ speed: 2.0 }),
 });
 
-// 0.5x Geschwindigkeit für detaillierte Analyse
+// 0.5x speed for detailed analysis
 fetch('/replay/session.json', {
   method: 'POST',
   body: JSON.stringify({ speed: 0.5 }),
 });
 ```
 
-### Loop-Replay für Dauertests
+### Loop Replay for Continuous Testing
 
 ```javascript
-// Endlos-Loop für Stress-Tests
+// Endless loop for stress testing
 fetch('/replay/session.json', {
   method: 'POST',
   body: JSON.stringify({ speed: 1.0, loop: true }),
 });
 ```
 
-### Recording-Analyse
+### Recording Analysis
 
 ```javascript
-// Recording laden und analysieren
+// Load and analyze recording
 const recording = client.loadSessionRecording('session.json');
 
 console.log(`Session: ${recording.metadata.sessionName}`);
 console.log(`Messages: ${recording.metadata.messageCount}`);
 console.log(`Duration: ${recording.metadata.duration / 1000}s`);
 
-// Message-Types analysieren
+// Analyze message types
 const messageTypes = {};
 recording.messages.forEach((msg) => {
   messageTypes[msg.messageType] = (messageTypes[msg.messageType] || 0) + 1;
@@ -340,97 +356,97 @@ console.log('Message types:', messageTypes);
 
 ## Troubleshooting
 
-### Häufige Probleme
+### Common Problems
 
-#### Recording startet nicht automatisch
+#### Recording doesn't start automatically
 
 ```bash
-# Prüfen ob Session Recording aktiviert ist
+# Check if session recording is enabled
 echo $SESSION_RECORDING_ENABLED
 
-# Prüfen ob Auto-Start aktiviert ist
+# Check if auto-start is enabled
 echo $SESSION_RECORDING_AUTO_START
 
-# Logs überprüfen
+# Check logs
 grep "Session recorder" ./logs/signalr-messages-dev.log
 ```
 
-#### Recording-Datei wird nicht erstellt
+#### Recording file is not created
 
 ```bash
-# Recording-Verzeichnis prüfen
+# Check recording directory
 ls -la ./recordings/
 
-# Berechtigungen prüfen
+# Check permissions
 chmod 755 ./recordings/
 
-# Speicherplatz prüfen
+# Check disk space
 df -h .
 ```
 
-#### Replay funktioniert nicht
+#### Replay doesn't work
 
 ```bash
-# Replay Server Status prüfen
+# Check replay server status
 curl http://localhost:3002/health
 
-# Recording-Datei validieren
+# Validate recording file
 jq . ./recordings/session.json > /dev/null
 
-# WebSocket-Verbindung testen
+# Test WebSocket connection
 wscat -c ws://localhost:3002
 ```
 
-### Performance-Optimierung
+### Performance Optimization
 
-#### Recording-Größe reduzieren
+#### Reduce Recording Size
 
 ```bash
-# Nur essentielle Streams verwenden
+# Use only essential streams
 # In SignalR Client: setStreamSet('ESSENTIAL')
 
-# Kürzere Sessions aufzeichnen
-# Recording nach wichtigen Events stoppen
+# Record shorter sessions
+# Stop recording after important events
 ```
 
-#### Replay-Performance verbessern
+#### Improve Replay Performance
 
 ```bash
-# Playback-Speed anpassen
-# Niedrigere Speed bei großen Sessions
+# Adjust playback speed
+# Lower speed for large sessions
 
-# Message-Buffer begrenzen
-# Nur relevante Message-Types replaying
+# Limit message buffer
+# Only replay relevant message types
 ```
 
-## Integration mit CI/CD
+## CI/CD Integration
 
-### Automatisierte Tests mit Recordings
+### Automated Tests with Recordings
 
 ```yaml
-# GitHub Actions Beispiel
+# GitHub Actions example
 - name: Test with recorded session
   run: |
-    # Recording-Datei aus Artifacts laden
+    # Load recording file from artifacts
     cp test-data/race-session.json recordings/
 
-    # Replay Server starten
+    # Start replay server
     cd test-server && npm run replay &
 
-    # Recording abspielen
+    # Play recording
     curl -X POST http://localhost:3002/replay/race-session.json
 
-    # Tests gegen replayed Daten laufen lassen
+    # Run tests against replayed data
     npm test
 ```
 
 ### Regression Testing
 
 ```bash
-# Baseline-Recording erstellen
+# Create baseline recording
 cp production-session.json test-data/baseline.json
 
-# Nach Code-Änderungen testen
+# Test after code changes
 npm run test:replay test-data/baseline.json
 ```
 
@@ -438,23 +454,23 @@ npm run test:replay test-data/baseline.json
 
 ### Recording
 
-1. **Vollständige Sessions aufzeichnen** - vom SessionInfo bis zum Session-Ende
-2. **Aussagekräftige Namen** verwenden für einfache Identifizierung
-3. **Recording-Größe überwachen** - große Sessions können mehrere MB werden
-4. **Regelmäßige Bereinigung** alter Recordings
+1. **Record complete sessions** - from SessionInfo to session end
+2. **Use meaningful names** for easy identification
+3. **Monitor recording size** - large sessions can become several MB
+4. **Regular cleanup** of old recordings
 
 ### Replay
 
-1. **Realistische Playback-Speed** verwenden (0.5x - 2x)
-2. **Loop-Funktion sparsam** einsetzen - kann System belasten
-3. **Multiple Clients testen** - mehrere Connections zum Replay Server
-4. **Error-Handling testen** - unterbrochene Replays, korrupte Dateien
+1. **Use realistic playback speed** (0.5x - 2x)
+2. **Use loop function sparingly** - can stress the system
+3. **Test multiple clients** - multiple connections to replay server
+4. **Test error handling** - interrupted replays, corrupt files
 
 ### Development
 
-1. **Separate Recording-Umgebung** für Production verwenden
-2. **Version-Control** für wichtige Recording-Dateien
-3. **Dokumentation** der Recording-Inhalte und -Zwecke
-4. **Automatisierte Tests** mit Standard-Recordings
+1. **Use separate recording environment** for production
+2. **Version control** for important recording files
+3. **Document** recording contents and purposes
+4. **Automated tests** with standard recordings
 
-Das Session Recording & Replay System bietet eine professionelle Lösung für die Entwicklung mit echten F1-Daten, ohne auf Live-Events angewiesen zu sein! 🏎️📼
+The Session Recording & Replay System provides a professional solution for developing with real F1 data without depending on live events! 🏎️📼

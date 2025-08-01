@@ -22,6 +22,9 @@
     "docker:logs": "docker-compose logs -f f1-mqtt-bridge",
     "homeassistant:build": "./homeassistant/build.sh",
     "homeassistant:build-single": "docker build -f homeassistant/Dockerfile -t f1-mqtt-bridge:ha .",
+    "recording:analyze": "node tools/recording-analyzer.js analyze",
+    "recording:convert": "node tools/recording-analyzer.js convert",
+    "recording:compare": "node tools/recording-analyzer.js compare recordings/",
     "prepare": "npm run build"
   },
   "keywords": [

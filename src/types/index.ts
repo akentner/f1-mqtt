@@ -1,6 +1,9 @@
 // Import F1 stream types from SignalR client
 export { F1Stream, F1_STREAM_SETS } from '../services/signalr-client';
 
+// Session Recording Mode types
+export type SessionRecordingMode = 'disabled' | 'raw' | 'structured' | 'hybrid';
+
 // Configuration interface definitions
 export interface SignalRConfig {
   hubUrl: string;
@@ -50,6 +53,7 @@ export interface AppConfig {
   };
   sessionRecording: {
     enabled: boolean;
+    mode: SessionRecordingMode;
     recordingPath: string;
     maxRecordingSize: number;
     autoStart: boolean;

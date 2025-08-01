@@ -193,6 +193,7 @@ export class SignalRClient extends EventEmitter {
     // Initialize session recorder
     this.sessionRecorder = new SessionRecorder({
       enabled: globalConfig.sessionRecording?.enabled ?? false,
+      mode: globalConfig.sessionRecording?.mode ?? 'structured',
       recordingPath:
         globalConfig.sessionRecording?.recordingPath ?? './recordings',
       maxRecordingSize:

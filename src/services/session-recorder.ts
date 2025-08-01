@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { logger } from '../utils/logger';
+import { SessionRecordingMode } from '../types';
 
 export interface SessionRecording {
   metadata: {
@@ -12,6 +13,7 @@ export interface SessionRecording {
     endTime?: string;
     duration?: number;
     recordingVersion: string;
+    recordingMode: SessionRecordingMode;
     messageCount: number;
     totalSize: number;
   };
@@ -31,6 +33,7 @@ export interface SessionMessage {
 
 export interface SessionRecorderConfig {
   enabled: boolean;
+  mode: SessionRecordingMode;
   recordingPath: string;
   maxRecordingSize: number; // in bytes
   autoStart: boolean;
@@ -89,6 +92,7 @@ export class SessionRecorder {
         location: sessionInfo?.location || 'Unknown',
         startTime: this.sessionStartTime.toISOString(),
         recordingVersion: '1.0',
+        recordingMode: this.config.mode,
         messageCount: 0,
         totalSize: 0,
       },
@@ -114,7 +118,8 @@ export class SessionRecorder {
 
     logger.info('Started session recording', {
       sessionId,
-      sessionType: this.currentSession.metadata.sessionType,
+      sessionType: this.currentSession?.metadata.sessionType,
+      recordingMode: this.config.mode,
       recordingFile: this.recordingFilePath,
     });
   }
@@ -207,16 +212,17 @@ export class SessionRecorder {
     const relativeTime = now.getTime() - this.sessionStartTime.getTime();
     const dataSize = Buffer.byteLength(rawMessage, 'utf8');
 
-    const sessionMessage: SessionMessage = {
-      timestamp: now.toISOString(),
+    // Create message based on recording mode
+    const sessionMessage: SessionMessage = this.createSessionMessage(
+      now,
       relativeTime,
       messageType,
       direction,
       rawMessage,
       parsedMessage,
       streamName,
-      dataSize,
-    };
+      dataSize
+    );
 
     // Add to buffer
     this.messageBuffer.push(sessionMessage);
@@ -236,7 +242,67 @@ export class SessionRecorder {
       relativeTime: `${relativeTime}ms`,
       dataSize: `${dataSize}B`,
       bufferSize: this.messageBuffer.length,
+      recordingMode: this.config.mode,
     });
+  }
+
+  /**
+   * Create session message based on recording mode
+   */
+  private createSessionMessage(
+    timestamp: Date,
+    relativeTime: number,
+    messageType: string,
+    direction: 'incoming' | 'outgoing',
+    rawMessage: string,
+    parsedMessage?: Record<string, unknown>,
+    streamName?: string,
+    dataSize?: number
+  ): SessionMessage {
+    const baseMessage = {
+      timestamp: timestamp.toISOString(),
+      relativeTime,
+      messageType,
+      direction,
+      rawMessage,
+      dataSize: dataSize || Buffer.byteLength(rawMessage, 'utf8'),
+    };
+
+    switch (this.config.mode) {
+      case 'raw':
+        // Only store essential data for minimal file size
+        return {
+          ...baseMessage,
+          parsedMessage: undefined,
+          streamName: undefined,
+        };
+      
+      case 'structured':
+        // Full structured data (current behavior)
+        return {
+          ...baseMessage,
+          parsedMessage,
+          streamName,
+        };
+      
+      case 'hybrid': {
+        // Store parsed message only for important message types
+        const importantTypes = ['RESPONSE_MESSAGE', 'SUBSCRIPTION_MESSAGE'];
+        return {
+          ...baseMessage,
+          parsedMessage: importantTypes.includes(messageType) ? parsedMessage : undefined,
+          streamName,
+        };
+      }
+      
+      default:
+        // Fallback to structured mode
+        return {
+          ...baseMessage,
+          parsedMessage,
+          streamName,
+        };
+    }
   }
 
   /**

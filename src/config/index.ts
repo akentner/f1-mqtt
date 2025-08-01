@@ -1,4 +1,4 @@
-import { AppConfig } from '../types';
+import { AppConfig, SessionRecordingMode } from '../types';
 
 // Default configuration values
 const DEFAULT_VALUES = {
@@ -43,6 +43,7 @@ const DEFAULT_VALUES = {
   },
   SESSION_RECORDING: {
     ENABLED: false,
+    MODE: 'structured' as const, // 'disabled' | 'raw' | 'structured' | 'hybrid'
     RECORDING_PATH: './recordings',
     MAX_RECORDING_SIZE: 100 * 1024 * 1024, // 100MB
     AUTO_START: false,
@@ -60,6 +61,12 @@ const DEFAULT_VALUES = {
 } as const;
 
 // Utility functions for configuration
+const parseSessionRecordingMode = (value: string | undefined, defaultValue: SessionRecordingMode): SessionRecordingMode => {
+  if (!value) return defaultValue;
+  const validModes: SessionRecordingMode[] = ['disabled', 'raw', 'structured', 'hybrid'];
+  return validModes.includes(value as SessionRecordingMode) ? (value as SessionRecordingMode) : defaultValue;
+};
+
 const generateClientId = (prefix: string): string => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substr(2, 9);
@@ -192,6 +199,10 @@ const config: AppConfig = {
     enabled: parseBooleanWithDefault(
       process.env.SESSION_RECORDING_ENABLED,
       DEFAULT_VALUES.SESSION_RECORDING.ENABLED
+    ),
+    mode: parseSessionRecordingMode(
+      process.env.SESSION_RECORDING_MODE,
+      DEFAULT_VALUES.SESSION_RECORDING.MODE
     ),
     recordingPath:
       process.env.SESSION_RECORDING_PATH ||
