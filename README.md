@@ -78,16 +78,18 @@ The `.env.local` file allows you to override any settings for local development 
 ### Setting up Local Configuration
 
 1. Copy the example file:
+
    ```bash
    cp .env.local.example .env.local
    ```
 
 2. Edit `.env.local` to override any values from `.env`:
+
    ```bash
    # Example: Override MQTT broker for local development
    MQTT_BROKER_URL=mqtt://192.168.1.100:1883
    MQTT_TOPIC_PREFIX=f1_dev
-   
+
    # Example: Enable debug features
    LOG_LEVEL=debug
    SESSION_RECORDING_ENABLED=true
@@ -102,25 +104,25 @@ The `.env.local` file allows you to override any settings for local development 
 
 ### Environment Variables
 
-| Variable               | Description           | Default                                   |
-| ---------------------- | --------------------- | ----------------------------------------- |
-| `SIGNALR_HUB_URL`      | SignalR Hub URL       | `https://livetiming.formula1.com/signalr` |
-| `SIGNALR_HUB_NAME`     | SignalR Hub Name      | `f1TimingHub`                             |
-| `SIGNALR_ACCESS_TOKEN` | Optional Access Token | -                                         |
-| `MQTT_BROKER_URL`      | MQTT Broker URL       | `mqtt://localhost:1883`                   |
-| `MQTT_USERNAME`        | MQTT Username         | -                                         |
-| `MQTT_PASSWORD`        | MQTT Password         | -                                         |
-| `MQTT_CLIENT_ID`       | MQTT Client ID        | `f1-mqtt-bridge`                          |
-| `MQTT_TOPIC_PREFIX`    | MQTT Topic Prefix     | `f1`                                      |
-| `MQTT_QOS`             | MQTT QoS Level (0-2)  | `1`                                       |
-| `MQTT_RETAIN`          | MQTT Retain Flag      | `false`                                   |
-| `LOG_LEVEL`            | Log Level             | `info`                                    |
-| `PORT`                 | HTTP Server Port      | `3000`                                    |
-| `HA_DISCOVERY_PREFIX`  | HA Discovery Prefix   | `homeassistant`                           |
-| `HA_NODE_ID`           | HA Node ID            | `f1_telemetry`                            |
-| `SESSION_RECORDING_ENABLED` | Enable session recording | `false`                          |
-| `SESSION_RECORDING_MODE` | Recording mode (disabled/raw/structured/hybrid) | `structured`     |
-| `SESSION_RECORDING_PATH` | Recording files path | `./recordings`                           |
+| Variable                    | Description                                     | Default                                   |
+| --------------------------- | ----------------------------------------------- | ----------------------------------------- |
+| `SIGNALR_HUB_URL`           | SignalR Hub URL                                 | `https://livetiming.formula1.com/signalr` |
+| `SIGNALR_HUB_NAME`          | SignalR Hub Name                                | `f1TimingHub`                             |
+| `SIGNALR_ACCESS_TOKEN`      | Optional Access Token                           | -                                         |
+| `MQTT_BROKER_URL`           | MQTT Broker URL                                 | `mqtt://localhost:1883`                   |
+| `MQTT_USERNAME`             | MQTT Username                                   | -                                         |
+| `MQTT_PASSWORD`             | MQTT Password                                   | -                                         |
+| `MQTT_CLIENT_ID`            | MQTT Client ID                                  | `f1-mqtt-bridge`                          |
+| `MQTT_TOPIC_PREFIX`         | MQTT Topic Prefix                               | `f1`                                      |
+| `MQTT_QOS`                  | MQTT QoS Level (0-2)                            | `1`                                       |
+| `MQTT_RETAIN`               | MQTT Retain Flag                                | `false`                                   |
+| `LOG_LEVEL`                 | Log Level                                       | `info`                                    |
+| `PORT`                      | HTTP Server Port                                | `3000`                                    |
+| `HA_DISCOVERY_PREFIX`       | HA Discovery Prefix                             | `homeassistant`                           |
+| `HA_NODE_ID`                | HA Node ID                                      | `f1_telemetry`                            |
+| `SESSION_RECORDING_ENABLED` | Enable session recording                        | `false`                                   |
+| `SESSION_RECORDING_MODE`    | Recording mode (disabled/raw/structured/hybrid) | `structured`                              |
+| `SESSION_RECORDING_PATH`    | Recording files path                            | `./recordings`                            |
 
 ## 📁 Project Structure
 
