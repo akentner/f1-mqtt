@@ -153,12 +153,14 @@ SESSION_RECORDING_FILTER_KEEP_ALIVE=true  # Filter out keep-alive messages
 #### Recommended Settings
 
 **Development:**
+
 ```bash
 SESSION_RECORDING_MODE=hybrid
 SESSION_RECORDING_FILTER_KEEP_ALIVE=true
 ```
 
 **Production:**
+
 ```bash
 SESSION_RECORDING_MODE=raw
 SESSION_RECORDING_FILTER_KEEP_ALIVE=false

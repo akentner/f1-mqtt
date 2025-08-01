@@ -276,7 +276,7 @@ export class SessionRecorder {
           parsedMessage: undefined,
           streamName: undefined,
         };
-      
+
       case 'structured':
         // Full structured data (current behavior)
         return {
@@ -284,17 +284,19 @@ export class SessionRecorder {
           parsedMessage,
           streamName,
         };
-      
+
       case 'hybrid': {
         // Store parsed message only for important message types
         const importantTypes = ['RESPONSE_MESSAGE', 'SUBSCRIPTION_MESSAGE'];
         return {
           ...baseMessage,
-          parsedMessage: importantTypes.includes(messageType) ? parsedMessage : undefined,
+          parsedMessage: importantTypes.includes(messageType)
+            ? parsedMessage
+            : undefined,
           streamName,
         };
       }
-      
+
       default:
         // Fallback to structured mode
         return {

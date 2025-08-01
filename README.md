@@ -7,6 +7,8 @@ A TypeScript-based server that receives, processes, and forwards F1 timing data 
 - **SignalR Client**: Connection to F1 Live Timing data
 - **MQTT Publisher**: Publishing events to MQTT
 - **Event Processing**: Intelligent batch processing and data transformation
+- **Session Recording**: Multi-mode recording system with 70% size reduction
+- **Recording Analysis**: Tools for analyzing and converting session recordings
 - **Home Assistant Integration**: Automatic discovery configuration
 - **Health Monitoring**: REST API for status and metrics
 - **Docker Support**: Fully containerized
@@ -84,6 +86,9 @@ npm run docker:stop
 | `PORT`                 | HTTP Server Port      | `3000`                                    |
 | `HA_DISCOVERY_PREFIX`  | HA Discovery Prefix   | `homeassistant`                           |
 | `HA_NODE_ID`           | HA Node ID            | `f1_telemetry`                            |
+| `SESSION_RECORDING_ENABLED` | Enable session recording | `false`                          |
+| `SESSION_RECORDING_MODE` | Recording mode (disabled/raw/structured/hybrid) | `structured`     |
+| `SESSION_RECORDING_PATH` | Recording files path | `./recordings`                           |
 
 ## 📁 Project Structure
 
@@ -95,7 +100,9 @@ f1-mqtt/
 │   │   ├── signalr-client.ts
 │   │   ├── mqtt-publisher.ts
 │   │   ├── event-processor.ts
-│   │   └── health-server.ts
+│   │   ├── health-server.ts
+│   │   ├── session-recorder.ts
+│   │   └── signalr-message-logger.ts
 │   ├── types/             # TypeScript definitions
 │   ├── utils/             # Utility functions
 │   ├── __tests__/         # Unit Tests
@@ -103,8 +110,11 @@ f1-mqtt/
 ├── .devcontainer/         # VS Code DevContainer
 ├── homeassistant/         # Home Assistant Addon
 ├── docker/                # Docker configurations
+├── tools/                 # Analysis and utility tools
+│   └── recording-analyzer.js
+├── recordings/            # Session recording files
 ├── dist/                  # Compiled JavaScript files
-└── docs/                  # Documentation (future)
+└── docs/                  # Comprehensive documentation
 ```
 
 ## 🧪 Testing
@@ -118,6 +128,36 @@ npm run test:watch
 
 # Coverage report
 npm run test:coverage
+
+# Recording analysis tools
+npm run recording:analyze <file>
+npm run recording:convert <input> <output> <mode>
+npm run recording:compare
+```
+
+## 📼 Session Recording
+
+The application supports recording F1 sessions for development and analysis:
+
+### Recording Modes
+
+- **`raw`**: Minimal file size (~70% smaller) - ideal for production
+- **`structured`**: Full metadata and parsed data - best for development
+- **`hybrid`**: Balanced approach with smart filtering
+- **`disabled`**: No recording
+
+### Quick Setup
+
+```bash
+# Enable recording in development
+SESSION_RECORDING_ENABLED=true
+SESSION_RECORDING_MODE=hybrid
+
+# Analyze existing recordings
+npm run recording:compare
+
+# Convert between modes
+npm run recording:convert session.json session-raw.json raw
 ```
 
 ## 🔧 Development
@@ -269,6 +309,10 @@ The provided `docker-compose.yml` starts:
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
+This project is for developed with support of GitHub Copilot with Claude Sonnet 4.
+
+This project is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trademarks of Formula One Licensing B.V.
+
 ## 🆘 Support
 
 - **Issues**: GitHub Issues for bug reports and feature requests
@@ -281,3 +325,10 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 - SignalR Community
 - MQTT.org
 - Home Assistant Community
+
+## 🙏 Credits
+
+This project was heavily inspired by:
+
+- https://github.com/slowlydev/f1-dash
+- https://github.com/Nicxe/f1_sensor

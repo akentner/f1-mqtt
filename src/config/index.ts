@@ -61,10 +61,20 @@ const DEFAULT_VALUES = {
 } as const;
 
 // Utility functions for configuration
-const parseSessionRecordingMode = (value: string | undefined, defaultValue: SessionRecordingMode): SessionRecordingMode => {
+const parseSessionRecordingMode = (
+  value: string | undefined,
+  defaultValue: SessionRecordingMode
+): SessionRecordingMode => {
   if (!value) return defaultValue;
-  const validModes: SessionRecordingMode[] = ['disabled', 'raw', 'structured', 'hybrid'];
-  return validModes.includes(value as SessionRecordingMode) ? (value as SessionRecordingMode) : defaultValue;
+  const validModes: SessionRecordingMode[] = [
+    'disabled',
+    'raw',
+    'structured',
+    'hybrid',
+  ];
+  return validModes.includes(value as SessionRecordingMode)
+    ? (value as SessionRecordingMode)
+    : defaultValue;
 };
 
 const generateClientId = (prefix: string): string => {

@@ -7,11 +7,13 @@ This document describes the different recording modes available in the F1 Sessio
 The system supports four different recording modes, each optimized for different use cases:
 
 ### 1. `disabled` - No Recording
+
 - **File Size**: 0 bytes
 - **Performance**: Minimal overhead
 - **Use Case**: When recording is not needed
 
 ### 2. `raw` - Raw Messages Only
+
 - **File Size**: ~6MB for practice session (70% reduction)
 - **Content**: Only raw SignalR messages with basic timestamps
 - **Performance**: Fastest, minimal processing
@@ -19,6 +21,7 @@ The system supports four different recording modes, each optimized for different
 - **Trade-offs**: No parsed data, no stream metadata
 
 #### Raw Mode Structure
+
 ```json
 {
   "metadata": {
@@ -41,6 +44,7 @@ The system supports four different recording modes, each optimized for different
 ```
 
 ### 3. `structured` - Full Structured Data
+
 - **File Size**: ~19MB for practice session (reference size)
 - **Content**: Full parsed messages, stream metadata, complete information
 - **Performance**: More processing overhead for parsing
@@ -48,6 +52,7 @@ The system supports four different recording modes, each optimized for different
 - **Features**: Complete data with all metadata
 
 #### Structured Mode Structure
+
 ```json
 {
   "metadata": {
@@ -74,6 +79,7 @@ The system supports four different recording modes, each optimized for different
 ```
 
 ### 4. `hybrid` - Smart Hybrid Mode
+
 - **File Size**: ~12MB for practice session (40% reduction)
 - **Content**: Structured data for important messages, raw for others
 - **Performance**: Balanced processing overhead
@@ -81,10 +87,12 @@ The system supports four different recording modes, each optimized for different
 - **Smart Logic**: Only parse important message types
 
 #### Important Message Types (Structured)
+
 - `RESPONSE_MESSAGE` - Initial session data and responses
 - `SUBSCRIPTION_MESSAGE` - Stream subscription confirmations
 
 #### Other Message Types (Raw)
+
 - Keep-alive messages
 - Heartbeat messages
 - Routine updates
@@ -92,12 +100,14 @@ The system supports four different recording modes, each optimized for different
 ## Configuration
 
 ### Environment Variable
+
 ```bash
 # Set the recording mode
 SESSION_RECORDING_MODE=hybrid
 ```
 
 ### Valid Values
+
 - `disabled` - No recording
 - `raw` - Raw messages only
 - `structured` - Full structured data (default)
@@ -105,38 +115,44 @@ SESSION_RECORDING_MODE=hybrid
 
 ## Performance Comparison
 
-| Mode | File Size | Processing | Memory | Best For |
-|------|-----------|------------|---------|----------|
-| `disabled` | 0 MB | None | Minimal | No recording needed |
-| `raw` | ~6 MB | Minimal | Low | Production efficiency |
-| `hybrid` | ~12 MB | Moderate | Medium | Development balance |
-| `structured` | ~19 MB | High | High | Full development features |
+| Mode         | File Size | Processing | Memory  | Best For                  |
+| ------------ | --------- | ---------- | ------- | ------------------------- |
+| `disabled`   | 0 MB      | None       | Minimal | No recording needed       |
+| `raw`        | ~6 MB     | Minimal    | Low     | Production efficiency     |
+| `hybrid`     | ~12 MB    | Moderate   | Medium  | Development balance       |
+| `structured` | ~19 MB    | High       | High    | Full development features |
 
 ## Use Case Recommendations
 
 ### Production Deployment
+
 ```bash
 SESSION_RECORDING_MODE=raw
 SESSION_RECORDING_FILTER_KEEP_ALIVE=false
 ```
+
 - Minimal storage usage
 - Fastest performance
 - Still captures all raw data for analysis
 
 ### Development Environment
+
 ```bash
 SESSION_RECORDING_MODE=hybrid
 SESSION_RECORDING_FILTER_KEEP_ALIVE=true
 ```
+
 - Good balance of features and efficiency
 - Structured data for important messages
 - Filtered keep-alive messages
 
 ### Debugging/Analysis
+
 ```bash
 SESSION_RECORDING_MODE=structured
 SESSION_RECORDING_FILTER_KEEP_ALIVE=false
 ```
+
 - Complete data with all metadata
 - Full parsing information
 - All messages preserved
@@ -144,11 +160,13 @@ SESSION_RECORDING_FILTER_KEEP_ALIVE=false
 ## Migration and Compatibility
 
 ### Backwards Compatibility
+
 - Existing recordings remain compatible
 - New recordings include `recordingMode` in metadata
 - Replay server handles all formats
 
 ### Converting Between Modes
+
 - Raw → Structured: Requires re-recording or raw message parsing
 - Structured → Raw: Can extract raw messages from existing recordings
 - Hybrid → Any: Contains both raw and structured data where available
@@ -158,10 +176,10 @@ SESSION_RECORDING_FILTER_KEEP_ALIVE=false
 Based on real F1 practice session data:
 
 | Recording Mode | File Size | Size Reduction | Messages Parsed |
-|---------------|-----------|----------------|-----------------|
-| Structured | 19.2 MB | 0% (baseline) | All messages |
-| Hybrid | 12.1 MB | 37% reduction | Important only |
-| Raw | 5.8 MB | 70% reduction | None |
+| -------------- | --------- | -------------- | --------------- |
+| Structured     | 19.2 MB   | 0% (baseline)  | All messages    |
+| Hybrid         | 12.1 MB   | 37% reduction  | Important only  |
+| Raw            | 5.8 MB    | 70% reduction  | None            |
 
 ## Best Practices
 

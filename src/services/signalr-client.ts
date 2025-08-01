@@ -5,13 +5,8 @@ import http from 'http';
 import { SignalRConfig, F1Event } from '../types';
 import { logger } from '../utils/logger';
 import globalConfig from '../config';
-import {
-  SignalRMessageLogger,
-} from './signalr-message-logger';
-import {
-  SessionRecorder,
-  SessionRecording,
-} from './session-recorder';
+import { SignalRMessageLogger } from './signalr-message-logger';
+import { SessionRecorder, SessionRecording } from './session-recorder';
 
 /**
  * F1 Live Timing Stream Types
