@@ -458,7 +458,9 @@ export class SignalRClient extends EventEmitter {
 
   private handleMessage(data: string): void {
     try {
-      const timestamp = new Date().toISOString();
+      // Try to extract F1 timing information first, fallback to local timestamp
+      const timestamp =
+        this.extractTimestampFromMessage(data) || new Date().toISOString();
 
       // Add to message buffer for debugging (with size limit)
       this.messageBuffer.push(data);
@@ -915,5 +917,95 @@ export class SignalRClient extends EventEmitter {
     }
 
     return undefined;
+  }
+
+  /**
+   * Extract timestamp from SignalR message data
+   * Tries to find F1 timing information before falling back to local time
+   */
+  private extractTimestampFromMessage(data: string): string | null {
+    try {
+      const payload = JSON.parse(data) as Record<string, unknown>;
+
+      // Check for ExtrapolatedClock in response messages (R property)
+      if (payload.R && typeof payload.R === 'object') {
+        const response = payload.R as Record<string, unknown>;
+        if (
+          response.ExtrapolatedClock &&
+          typeof response.ExtrapolatedClock === 'object'
+        ) {
+          const clock = response.ExtrapolatedClock as Record<string, unknown>;
+          if (clock.Utc && typeof clock.Utc === 'string') {
+            logger.debug('🕐 Using F1 ExtrapolatedClock timestamp', {
+              f1Timestamp: clock.Utc,
+              localTimestamp: new Date().toISOString(),
+            });
+            return clock.Utc;
+          }
+        }
+
+        // Check for SessionInfo timestamps
+        if (response.SessionInfo && typeof response.SessionInfo === 'object') {
+          const sessionInfo = response.SessionInfo as Record<string, unknown>;
+          if (
+            sessionInfo.StartDate &&
+            typeof sessionInfo.StartDate === 'string'
+          ) {
+            // Convert session start date to current time estimate
+            const startDate = new Date(sessionInfo.StartDate);
+            const now = new Date();
+            if (
+              !isNaN(startDate.getTime()) &&
+              startDate.getTime() <= now.getTime()
+            ) {
+              logger.debug('🏁 Using F1 SessionInfo derived timestamp', {
+                sessionStart: sessionInfo.StartDate,
+                derivedTimestamp: now.toISOString(),
+              });
+              return now.toISOString();
+            }
+          }
+        }
+      }
+
+      // Check for ExtrapolatedClock in hub messages (M property)
+      if (payload.M && Array.isArray(payload.M)) {
+        for (const hubMsg of payload.M) {
+          if (typeof hubMsg === 'object' && hubMsg !== null) {
+            const msg = hubMsg as Record<string, unknown>;
+            if (
+              msg.M === 'feed' &&
+              msg.A &&
+              Array.isArray(msg.A) &&
+              msg.A.length >= 2
+            ) {
+              const streamName = msg.A[0] as string;
+              const streamData = msg.A[1] as Record<string, unknown>;
+
+              if (
+                streamName === 'ExtrapolatedClock' &&
+                streamData.Utc &&
+                typeof streamData.Utc === 'string'
+              ) {
+                logger.debug('🕐 Using F1 ExtrapolatedClock feed timestamp', {
+                  f1Timestamp: streamData.Utc,
+                  localTimestamp: new Date().toISOString(),
+                });
+                return streamData.Utc;
+              }
+            }
+          }
+        }
+      }
+
+      // No F1 timestamp found
+      return null;
+    } catch (error) {
+      // If parsing fails, return null to use local timestamp
+      logger.debug('⚠️ Failed to extract F1 timestamp, using local time', {
+        error: (error as Error).message,
+      });
+      return null;
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import * as mqtt from 'mqtt';
-import { MqttConfig, MqttMessage, TopicRetainConfig } from '../types';
+import { MqttConfig, MqttMessage } from '../types';
 import { logger } from '../utils/logger';
 
 export class MqttPublisher extends EventEmitter {
@@ -122,6 +122,9 @@ export class MqttPublisher extends EventEmitter {
             properties: connack.properties || 'none',
           });
           this.isConnected = true;
+
+          // Log retained topics configuration
+          this.logRetainedTopicsConfig();
 
           // Publish birth message
           this.publishBirthMessage();
@@ -303,7 +306,10 @@ export class MqttPublisher extends EventEmitter {
    * Check if a topic should be retained based on configured patterns
    */
   private shouldRetainTopic(topic: string): boolean {
-    if (!this.config.retainedTopics) {
+    if (
+      !this.config.retainedTopics ||
+      this.config.retainedTopics.length === 0
+    ) {
       return this.config.retain ?? false;
     }
 
@@ -314,15 +320,14 @@ export class MqttPublisher extends EventEmitter {
       : topic;
 
     // Check each retained topic pattern
-    for (const retainConfig of this.config.retainedTopics) {
-      if (this.matchesPattern(topicWithoutPrefix, retainConfig.pattern)) {
-        logger.debug('Topic matched retain pattern', {
+    for (const pattern of this.config.retainedTopics) {
+      if (this.matchesMqttPattern(topicWithoutPrefix, pattern)) {
+        logger.debug('Topic matched MQTT retain pattern', {
           topic: topicWithoutPrefix,
-          pattern: retainConfig.pattern,
-          retain: retainConfig.retain,
-          description: retainConfig.description,
+          pattern,
+          retain: true,
         });
-        return retainConfig.retain;
+        return true;
       }
     }
 
@@ -331,23 +336,68 @@ export class MqttPublisher extends EventEmitter {
   }
 
   /**
-   * Check if a topic matches a pattern with wildcard support
-   * Supports:
-   * - * matches any single segment (no slashes)
-   * - ** matches any number of segments (including slashes)
+   * Check if a topic matches an MQTT pattern with standard wildcards
+   * Supports MQTT standard wildcards:
+   * - + matches any single topic level
+   * - # matches any number of topic levels (must be last character)
    */
-  private matchesPattern(topic: string, pattern: string): boolean {
+  private matchesMqttPattern(topic: string, pattern: string): boolean {
     // Handle exact match first
     if (pattern === topic) return true;
 
-    // Convert pattern to regex
-    const regexPattern = pattern
-      .replace(/\*\*/g, '__DOUBLE_WILDCARD__') // Temporary placeholder
-      .replace(/\*/g, '[^/]*') // * matches single segment (no slashes)
-      .replace(/__DOUBLE_WILDCARD__/g, '.*'); // ** matches any characters including slashes
+    // Validate # wildcard usage (must be last and alone in level)
+    if (pattern.includes('#')) {
+      if (
+        !pattern.endsWith('#') ||
+        (pattern !== '#' && !pattern.endsWith('/#'))
+      ) {
+        logger.warn('Invalid MQTT pattern: # must be last character', {
+          pattern,
+        });
+        return false;
+      }
+    }
 
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(topic);
+    // Split into topic levels
+    const topicLevels = topic.split('/');
+    const patternLevels = pattern.split('/');
+
+    // Handle # wildcard (matches all remaining levels)
+    if (pattern.endsWith('#')) {
+      const patternWithoutHash =
+        pattern === '#' ? [] : patternLevels.slice(0, -1);
+
+      // Must have at least as many levels as pattern before #
+      if (topicLevels.length < patternWithoutHash.length) {
+        return false;
+      }
+
+      // Check levels before # wildcard
+      for (let i = 0; i < patternWithoutHash.length; i++) {
+        if (
+          patternWithoutHash[i] !== '+' &&
+          patternWithoutHash[i] !== topicLevels[i]
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Without #, must have exact same number of levels
+    if (topicLevels.length !== patternLevels.length) {
+      return false;
+    }
+
+    // Check each level
+    for (let i = 0; i < patternLevels.length; i++) {
+      if (patternLevels[i] !== '+' && patternLevels[i] !== topicLevels[i]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   async disconnect(): Promise<void> {
@@ -439,5 +489,67 @@ export class MqttPublisher extends EventEmitter {
 
   getConnectionStatus(): boolean {
     return this.isConnected;
+  }
+
+  /**
+   * Log the retained topics configuration at startup
+   */
+  private logRetainedTopicsConfig(): void {
+    const retainedTopics = this.config.retainedTopics;
+    const globalRetain = this.config.retain ?? false;
+    const topicPrefix = this.config.topicPrefix || 'f1';
+
+    if (!retainedTopics || retainedTopics.length === 0) {
+      logger.info('📌 MQTT Retain Configuration', {
+        mode: 'global',
+        globalRetain,
+        retainedPatterns: 'none',
+        note: globalRetain
+          ? 'All topics will be retained'
+          : 'No topics will be retained',
+      });
+    } else {
+      logger.info('📌 MQTT Retain Configuration', {
+        mode: 'pattern-based',
+        globalRetain,
+        patternCount: retainedTopics.length,
+        retainedPatterns: retainedTopics,
+        topicPrefix,
+        examples: retainedTopics
+          .slice(0, 3)
+          .map((pattern) => `${topicPrefix}/${pattern}`),
+        note: `Topics matching these MQTT patterns will be retained (+ = single level, # = multi-level)`,
+      });
+
+      // Log some example matches for the first few patterns
+      const exampleTopics = [
+        'sessioninfo',
+        'sessiondata',
+        'driver1/status',
+        'session/status',
+        'weather/temperature',
+        'weather/humidity/current',
+        'homeassistant/discovery',
+      ];
+
+      const matchExamples: { pattern: string; matches: string[] }[] = [];
+      retainedTopics.slice(0, 3).forEach((pattern) => {
+        const matches = exampleTopics.filter((topic) =>
+          this.matchesMqttPattern(topic, pattern)
+        );
+        if (matches.length > 0) {
+          matchExamples.push({ pattern, matches: matches.slice(0, 3) });
+        }
+      });
+
+      if (matchExamples.length > 0) {
+        logger.info('📌 MQTT Pattern Examples', {
+          examples: matchExamples.map(({ pattern, matches }) => ({
+            pattern,
+            sampleMatches: matches.map((match) => `${topicPrefix}/${match}`),
+          })),
+        });
+      }
+    }
   }
 }

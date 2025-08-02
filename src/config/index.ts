@@ -1,4 +1,4 @@
-import { AppConfig, SessionRecordingMode, TopicRetainConfig } from '../types';
+import { AppConfig, SessionRecordingMode } from '../types';
 
 // Default configuration values
 const DEFAULT_VALUES = {
@@ -28,31 +28,15 @@ const DEFAULT_VALUES = {
     SESSION_EXPIRY_INTERVAL: 3600,
     BIRTH_MESSAGE: 'online',
     WILL_MESSAGE: 'offline',
-    // Default retained topic patterns
+    // Default retained topic patterns (MQTT standard wildcards)
     RETAINED_TOPICS: [
-      {
-        pattern: 'session_info',
-        retain: true,
-        description: 'Session information (practice, qualifying, race)',
-      },
-      {
-        pattern: 'driver_list',
-        retain: true,
-        description: 'Current driver list and numbers',
-      },
-      {
-        pattern: 'track_status',
-        retain: true,
-        description: 'Track status (green, yellow, red flag)',
-      },
-      { pattern: 'weather', retain: true, description: 'Weather conditions' },
-      { pattern: '**/status', retain: true, description: 'All status topics' },
-      {
-        pattern: '**/discovery',
-        retain: true,
-        description: 'Home Assistant discovery topics',
-      },
-    ] as TopicRetainConfig[],
+      'sessioninfo',
+      'sessiondata',
+      'trackstatus',
+      'weatherdata',
+      '+/status',
+      '+/discovery',
+    ],
   },
   LOGGING: {
     LEVEL: 'info' as const,
@@ -129,22 +113,18 @@ const parseBooleanWithDefault = (
 };
 
 // Parse retained topics configuration from environment
-const parseRetainedTopics = (): TopicRetainConfig[] => {
+const parseRetainedTopics = (): string[] => {
   const envValue = process.env.MQTT_RETAINED_TOPICS;
   if (!envValue) {
-    return DEFAULT_VALUES.MQTT.RETAINED_TOPICS;
+    return [...DEFAULT_VALUES.MQTT.RETAINED_TOPICS]; // Convert readonly to mutable array
   }
 
   try {
-    const parsed = JSON.parse(envValue) as TopicRetainConfig[];
-    // Validate the parsed configuration
-    if (Array.isArray(parsed)) {
-      return parsed.filter(
-        (config) =>
-          typeof config.pattern === 'string' &&
-          typeof config.retain === 'boolean'
-      );
-    }
+    // Parse comma-separated list of MQTT patterns
+    return envValue
+      .split(',')
+      .map((pattern) => pattern.trim())
+      .filter((pattern) => pattern.length > 0);
   } catch (error) {
     console.warn(
       'Invalid MQTT_RETAINED_TOPICS configuration, using defaults:',
@@ -152,7 +132,7 @@ const parseRetainedTopics = (): TopicRetainConfig[] => {
     );
   }
 
-  return DEFAULT_VALUES.MQTT.RETAINED_TOPICS;
+  return [...DEFAULT_VALUES.MQTT.RETAINED_TOPICS];
 };
 
 const config: AppConfig = {
